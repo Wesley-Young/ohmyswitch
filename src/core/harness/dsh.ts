@@ -12,7 +12,7 @@ const homeDir = ({ home, env }: HarnessEnvironment) => resolveDirOverride(home, 
 export const dsh: HarnessDescriptor = {
   id: 'dsh',
   name: 'DeepSeek Harness',
-  homepage: 'https://github.com/deepseek-ai/deepseek-harness',
+  homepage: 'https://deepseek.com/harness',
   homeDir,
   configFiles: (environment) => [join(homeDir(environment), 'cordis.patch.yml')],
 };
