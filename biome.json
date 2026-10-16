@@ -1,0 +1,280 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        "noEmptyInterface": "off",
+        "noImportCycles": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              [":PACKAGE:"],
+              ":BLANK_LINE:",
+              [":ALIAS:", ":PATH:"],
+              ":BLANK_LINE:",
+              [":BUN:", ":NODE:"]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["biome.json"],
+      "formatter": {
+        "lineWidth": 80
+      }
+    },
+    {
+      "includes": ["**/tsconfig*.json"],
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["src/core/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "core 不依赖 Electron，主进程能力放在 src/main。"
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "**/main/**",
+                      "**/renderer/**",
+                      "react",
+                      "react-dom"
+                    ],
+                    "message": "core 只放领域模型和纯逻辑，不依赖主进程或界面。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/main/plugins/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@trpc/server", "@trpc/server/*", "**/trpc/**"],
+                    "message": "业务代码不依赖 tRPC，传输层映射放在模块的 router.ts 中。"
+                  },
+                  {
+                    "group": ["**/renderer/**"],
+                    "message": "主进程不依赖界面代码。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/main/plugins/*/index.ts",
+        "src/main/plugins/*/router.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "渲染进程不使用 Electron API，通过 tRPC 调用主进程。"
+                },
+                "patterns": [
+                  {
+                    "group": ["node:*"],
+                    "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
+                  },
+                  {
+                    "group": ["**/main/**", "**/core/**"],
+                    "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/lib/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "渲染进程不使用 Electron API，通过 tRPC 调用主进程。"
+                },
+                "patterns": [
+                  {
+                    "group": ["node:*"],
+                    "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
+                  },
+                  {
+                    "group": ["**/main/**", "**/core/**"],
+                    "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
+                  },
+                  {
+                    "group": ["@/components/**", "@/routes/**"],
+                    "message": "lib/ 只放数据与工具函数，不依赖界面。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "渲染进程不使用 Electron API，通过 tRPC 调用主进程。"
+                },
+                "patterns": [
+                  {
+                    "group": ["node:*"],
+                    "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
+                  },
+                  {
+                    "group": ["**/main/**", "**/core/**"],
+                    "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
+                  },
+                  {
+                    "group": ["@/routes/**"],
+                    "message": "页面只由 main.tsx 装配；共享的界面放在 components/。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "渲染进程不使用 Electron API，通过 tRPC 调用主进程。"
+                },
+                "patterns": [
+                  {
+                    "group": ["node:*"],
+                    "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
+                  },
+                  {
+                    "group": ["**/main/**", "**/core/**"],
+                    "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
+                  },
+                  {
+                    "group": ["@/routes/**", "./*"],
+                    "message": "页面之间不互相导入；共享的界面放在 components/。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/lib/trpc.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/renderer/components/ui/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "noLabelWithoutControl": "off"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "off",
+            "noDoubleEquals": "off"
+          }
+        }
+      }
+    }
+  ]
+}

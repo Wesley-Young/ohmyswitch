@@ -1,0 +1,17 @@
+appId: io.github.wesley-young.ohmyswitch
+productName: ohmyswitch
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+asar: true
+mac:
+  category: public.app-category.developer-tools
+  target: [dmg, zip]
+win:
+  target: [nsis]
+linux:
+  category: Development
+  target: [AppImage]

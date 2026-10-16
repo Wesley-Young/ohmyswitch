@@ -1,0 +1,15 @@
+import { resolveDirOverride } from './paths.ts';
+import type { HarnessDescriptor, HarnessEnvironment } from './types.ts';
+
+import { join } from 'node:path';
+
+const homeDir = ({ home, env }: HarnessEnvironment) =>
+  resolveDirOverride(home, env.PI_CODING_AGENT_DIR) ?? join(home, '.pi', 'agent');
+
+export const pi: HarnessDescriptor = {
+  id: 'pi',
+  name: 'Pi',
+  homepage: 'https://pi.dev',
+  homeDir,
+  configFiles: (environment) => [join(homeDir(environment), 'models.json')],
+};
