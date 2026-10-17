@@ -9,6 +9,8 @@ files:
 asar: true
 mac:
   icon: build/icon.icns
+  # Only English and Simplified/Traditional Chinese; the other ~50 Chromium locales are dropped.
+  electronLanguages: [en, zh_CN]
   category: public.app-category.developer-tools
   target: [dmg, zip]
 win:

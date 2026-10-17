@@ -9,6 +9,8 @@ const devPort = 5173;
 export default defineConfig({
   main: {
     build: {
+      // Bundle runtime dependencies into out/main instead of shipping node_modules inside app.asar.
+      externalizeDeps: false,
       rollupOptions: { input: { index: fileURLToPath(new URL('src/main/index.ts', import.meta.url)) } },
     },
   },

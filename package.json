@@ -22,14 +22,12 @@
     "format": "biome check --write .",
     "ui:add": "node scripts/shadcn-add.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
     "@fraqjs/kernel": "^1.1.1",
     "@trpc/server": "^11.19.0",
     "jsonc-parser": "^3.3.1",
     "yaml": "^2.9.1",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
+    "zod": "^4.6.7",
     "@base-ui/react": "^1.9.0",
     "@biomejs/biome": "^2.5.15",
     "@lobehub/icons": "5.23.1",
