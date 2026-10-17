@@ -26,7 +26,7 @@ function CreateProviderForm({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [selected, setSelected] = useState<Endpoint[]>(['/v1/chat/completions']);
+  const [selected, setSelected] = useState<Endpoint[]>([]);
   const create = useMutation(
     trpc.providers.create.mutationOptions({
       onSuccess: async (provider) => {
