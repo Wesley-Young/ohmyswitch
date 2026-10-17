@@ -293,9 +293,11 @@ export class HarnessService extends Service {
     }
   }
 
-  /** Registered harnesses; the registration order is the display order. */
+  /** Registered harnesses in display order. Harnesses are independent of each other, so they are sorted by name. */
   private harnesses() {
-    return [...this.registrations.values()].map((registration) => registration.harness);
+    return [...this.registrations.values()]
+      .map((registration) => registration.harness)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }
 
   /** The provider's applications to registered harnesses, in display order. */

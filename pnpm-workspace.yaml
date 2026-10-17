@@ -2,3 +2,5 @@ allowBuilds:
   electron: true
   electron-winstaller: false
   esbuild: true
+patchedDependencies:
+  '@cordisjs/plugin-include@1.1.1': patches/@cordisjs__plugin-include@1.1.1.patch

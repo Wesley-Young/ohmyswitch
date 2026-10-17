@@ -1,3 +1,4 @@
+import { Loader } from '@cordisjs/plugin-loader';
 import type { Context } from 'cordis';
 
 import { DeepLinkService } from '../core/deep-links/service.ts';
@@ -7,6 +8,7 @@ import { PiHarnessPlugin } from '../core/harness-pi/index.ts';
 import { HarnessService } from '../core/harnesses/service.ts';
 import { IconService } from '../core/icons/service.ts';
 import { ModelsDevService } from '../core/models-dev/service.ts';
+import { PluginService } from '../core/plugins/service.ts';
 import { ProviderService } from '../core/providers/service.ts';
 import { StoreService } from '../core/store/service.ts';
 import type { AppConfig } from './config.ts';
@@ -18,8 +20,8 @@ import { join } from 'node:path';
 
 /**
  * The composition root: every plugin gets exactly the configuration it needs here. Plugins start as soon as the
- * services they inject exist, so the order below does not matter, except that harnesses are listed in the order
- * they are installed.
+ * services they inject exist, so the order below does not matter. Harnesses are not installed here: they are
+ * built-in plugins of `PluginService`, enabled unless `plugins.yml` or `plugins.patch.yml` disables them.
  */
 export const App = {
   name: 'ohmyswitch',
@@ -29,9 +31,12 @@ export const App = {
     ctx.plugin(ModelsDevService, { cachePath: join(config.dataDir, 'cache', 'models-dev.json') });
     ctx.plugin(IconService, { cacheDir: join(config.dataDir, 'cache', 'icons') });
     ctx.plugin(HarnessService, { home: config.home, env: config.env });
-    ctx.plugin(OpenCodeHarnessPlugin);
-    ctx.plugin(PiHarnessPlugin);
-    ctx.plugin(DshHarnessPlugin);
+    ctx.plugin(Loader);
+    ctx.plugin(PluginService, {
+      path: join(config.dataDir, 'plugins.yml'),
+      patchPath: join(config.dataDir, 'plugins.patch.yml'),
+      builtins: [OpenCodeHarnessPlugin, PiHarnessPlugin, DshHarnessPlugin],
+    });
     ctx.plugin(ProviderService);
     ctx.plugin(DeepLinkService);
     ctx.plugin(AppProtocol, {

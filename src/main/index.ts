@@ -48,10 +48,11 @@ function fail(error: unknown) {
 const Main = {
   name: 'main',
   apply(ctx: Context, config: AppConfig) {
-    // Without a plugin, everything that depends on it waits forever, so its failure ends startup.
+    // Without a core plugin, everything that depends on it waits forever, so its failure ends startup. Harness
+    // plugins (those with a plugins.yml entry) may fail on their own; the plugin list shows it.
     // `await()` rethrows the fiber's error, the only public way to read it.
     ctx.on('internal/status', (fiber) => {
-      if (fiber.state === FiberState.FAILED) fiber.await().catch(fail);
+      if (fiber.state === FiberState.FAILED && !fiber.entry) fiber.await().catch(fail);
     });
     ctx.plugin(App, config);
     ctx.inject(['deepLinks', 'window'], (ctx) => {

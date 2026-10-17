@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 export interface AppConfig {
   version: string;
-  /** ohmyswitch's own directory (`~/.ohmyswitch` or `OHMYSWITCH_HOME`): store.json and cache/. */
+  /** ohmyswitch's own directory (`~/.ohmyswitch` or `OHMYSWITCH_HOME`): store.json, plugins.yml and cache/. */
   dataDir: string;
   /** Built renderer files, served in production. */
   rendererDir: string;

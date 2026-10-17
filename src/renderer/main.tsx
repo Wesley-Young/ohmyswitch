@@ -9,6 +9,7 @@ import App from '@/App';
 import { syncColorScheme } from '@/lib/theme';
 import { queryClient } from '@/lib/trpc';
 import NotFound from '@/routes/not-found';
+import Plugins from '@/routes/plugins';
 import ProviderDetail from '@/routes/provider-detail';
 import ProviderEdit from '@/routes/provider-edit';
 import ProviderImport from '@/routes/provider-import';
@@ -35,6 +36,7 @@ createRoot(root).render(
               <Route path=":providerId" element={<ProviderDetail />} />
               <Route path=":providerId/edit" element={<ProviderEdit />} />
             </Route>
+            <Route path="plugins" element={<Plugins />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

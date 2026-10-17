@@ -1,7 +1,8 @@
-import { Plus } from 'lucide-react';
+import { Plus, Puzzle } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 
 import { DeepLinkListener } from '@/components/deep-link-listener';
+import { PluginListener } from '@/components/plugin-listener';
 import { TopBar } from '@/components/top-bar';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
@@ -13,10 +14,16 @@ export default function App() {
       <div className="flex h-screen flex-col overflow-hidden">
         <TopBar
           actions={
-            <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/providers/new" />}>
-              <Plus data-icon="inline-start" />
-              添加供应商
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/plugins" />}>
+                <Puzzle data-icon="inline-start" />
+                插件
+              </Button>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/providers/new" />}>
+                <Plus data-icon="inline-start" />
+                添加供应商
+              </Button>
+            </>
           }
         />
         <div className="flex min-h-0 flex-1">
@@ -25,6 +32,7 @@ export default function App() {
       </div>
       <Toaster position="bottom-right" />
       <DeepLinkListener />
+      <PluginListener />
     </TooltipProvider>
   );
 }

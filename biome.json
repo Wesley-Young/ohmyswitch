@@ -76,7 +76,9 @@
               "options": {
                 "paths": {
                   "electron": "core 不依赖 Electron；Electron 能力由 src/main/plugins 中的插件以服务提供。",
-                  "cordis": "只有模块的 index.ts、service.ts 依赖 cordis；其余文件是纯逻辑。"
+                  "cordis": "只有模块的 index.ts、service.ts 依赖 cordis；其余文件是纯逻辑。",
+                  "@cordisjs/plugin-loader": "只有模块的 index.ts、service.ts 依赖 cordis；其余文件是纯逻辑。",
+                  "@cordisjs/plugin-include": "只有模块的 index.ts、service.ts 依赖 cordis；其余文件是纯逻辑。"
                 },
                 "patterns": [
                   {

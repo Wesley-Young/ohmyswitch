@@ -1,0 +1,27 @@
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index d2b81fbf1d115a4f8035018cfdaf07741690dd30..e622a6c10cb868aee96076f4657d4443d3911014 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -1,6 +1,9 @@
+ import { EntryChange, EntryTree } from '@cordisjs/plugin-loader';
+ import { Context, Service } from 'cordis';
+ import { PatchOptions } from './patch.ts';
++export { PatchIndex, type EntryOwner, type PatchOptions } from './patch.ts';
++/** The YAML schema entry lists and patches are read with: JSON types plus `!!js` expressions. */
++export declare const entryListSchema: import('js-yaml').Schema;
+ type ConfigStage = 'read' | 'parse' | 'validate';
+ export declare class ConfigFileError extends Error {
+     stage: ConfigStage;
+diff --git a/lib/index.js b/lib/index.js
+index 1f0f0750b968b9435611141e36977665badd9491..008e9bcedacadbe6564f054ceefda624ef696e47 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -730,5 +730,7 @@ var index_default = Include;
+ export {
+   ConfigFileError,
+   Include,
+-  index_default as default
++  PatchIndex,
++  index_default as default,
++  schema as entryListSchema
+ };
