@@ -46,7 +46,7 @@ export default function Harnesses() {
                   <span
                     className={cn('size-2 rounded-full', harness.detected ? 'bg-success' : 'bg-muted-foreground/40')}
                   />
-                  {harness.detected ? '已检测到' : '未检测到'}
+                  {harness.detected ? '已安装' : '未发现 Harness'}
                 </span>
               </li>
             ))}
