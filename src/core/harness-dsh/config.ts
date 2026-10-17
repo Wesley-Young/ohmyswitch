@@ -294,10 +294,46 @@ function dshProviderEntry(provider: StoredProvider, existing: unknown, key: stri
   });
 }
 
+/**
+ * Put the routes named in `keys` into that order within the positions they already occupy; other routes stay where
+ * they are. Comments above a route move with it; blank lines separate positions, so they stay.
+ */
+function reorderPatchProviders(text: string | undefined, keys: readonly string[]) {
+  if (!text?.trim()) return text;
+  const label = 'DeepSeek Harness 的 profile patch';
+  const document = parsePatch(text, label);
+  const providers = providersMap(entryRow(document), label);
+  if (!providers) return text;
+  const { items } = providers;
+  const keyOf = (index: number) => {
+    const key = items[index]?.key;
+    return isScalar(key) ? String(key.value) : undefined;
+  };
+  const wanted = new Set(keys);
+  const slots = items.flatMap((_, index) => (wanted.has(keyOf(index) ?? '') ? [index] : []));
+  const pairs = new Map(slots.map((index) => [keyOf(index), items[index]]));
+  const order = keys.filter((key) => pairs.has(key));
+  if (slots.every((index, position) => keyOf(index) === order[position])) return text;
+  // A comment above the map's first entry belongs to that entry, but the parser attaches it to the map.
+  const first = items[0]?.key;
+  if (slots[0] === 0 && providers.commentBefore && isScalar(first)) {
+    first.commentBefore = [providers.commentBefore, first.commentBefore].filter(Boolean).join('\n');
+    providers.commentBefore = null;
+  }
+  const spacing = slots.map((index) => (isScalar(items[index].key) ? items[index].key.spaceBefore : undefined));
+  slots.forEach((index, position) => {
+    const pair = pairs.get(order[position]) as (typeof items)[number];
+    if (isScalar(pair.key)) pair.key.spaceBefore = spacing[position];
+    items[index] = pair;
+  });
+  return document.toString(stringifyOptions);
+}
+
 export const dshPatchAdapter: HarnessAdapter = {
   readProviders: readPatchProviders,
   entry: dshProviderEntry,
   write: writePatchProvider,
+  reorder: reorderPatchProviders,
   reservedKeys: new Set([...catalogProviders, ...deepseekRoutes]),
   // DSH writes profile patches with 0600.
   newFileMode: 0o600,

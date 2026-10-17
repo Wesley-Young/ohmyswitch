@@ -50,6 +50,7 @@
   - 只改 ohmyswitch 负责的条目，其他内容原样保留，能保留注释的格式就保留注释。
   - 使用原子写入。写入前比对文件内容，发现外部改动过就停下来重新读取。
   - 不写默认供应商和默认模型。
+  - ohmyswitch 的条目按供应商列表的顺序排列，只在它们已经占据的位置之间调换，用户自己的条目不动（`HarnessAdapter.reorder`）。顺序没有意义的文件（如 DSH 的凭据文件）不实现它。
   - 不碰 Harness 的登录凭据（如 Pi 的 `auth.json`、DSH 凭据文件中的 `records`）。Harness 只能从凭据库读取 API Key 时（如 DSH 的 `.credentials.yaml`），可以在其中增删 ohmyswitch 自己的 Key 条目，其他条目不读取其值、不修改。
   - 实现某个 Harness 之前，先在 `docs/harness/<id>.md` 写明它的原生配置契约（读写哪些文件和字段、明确不碰哪些）。契约以 Harness 的源码为准，注明核对的版本。
   - Harness 写入哪些文件由它的 `HarnessDescriptor.configFiles` 决定（可以有多个，如 DSH 的每个 profile 和凭据文件）。每个文件的读写逻辑是一个 `HarnessAdapter`（在 `core/harness-<id>/config.ts` 中，只做文本到文本的转换）。文件读写、串行化、加锁和写前比对在 `core/harnesses/editor.ts` 的 `ConfigEditor` 中，应用状态和 key 分配是 `core/harnesses/applications.ts` 中的纯函数；`HarnessService` 只负责注册、编排和记录。Harness 自己写文件时有跨进程锁的，写入时使用同样的锁（`core/file-lock.ts`）。保持实现与契约文档一致。

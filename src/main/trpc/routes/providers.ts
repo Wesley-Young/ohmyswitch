@@ -1,4 +1,10 @@
-import { createProviderInput, providerIdInput, setModelsInput, updateProviderInput } from '#core/providers/schemas.ts';
+import {
+  createProviderInput,
+  providerIdInput,
+  reorderInput,
+  setModelsInput,
+  updateProviderInput,
+} from '#core/providers/schemas.ts';
 import type { ProviderService } from '#core/providers/service.ts';
 import { publicProcedure } from '#main/trpc/procedures.ts';
 
@@ -10,6 +16,7 @@ export function providerRoutes(providers: ProviderService) {
     create: publicProcedure.input(createProviderInput).mutation(({ input }) => providers.create(input)),
     update: publicProcedure.input(updateProviderInput).mutation(({ input }) => providers.update(input)),
     delete: publicProcedure.input(providerIdInput).mutation(({ input }) => providers.delete(input.providerId)),
+    reorder: publicProcedure.input(reorderInput).mutation(({ input }) => providers.reorder(input)),
     // A mutation: it reaches out to the provider and should run only when asked.
     fetchModels: publicProcedure
       .input(providerIdInput)

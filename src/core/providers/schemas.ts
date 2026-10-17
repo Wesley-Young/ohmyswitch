@@ -26,6 +26,14 @@ export const createProviderInput = connectionInput.extend({
 
 export const updateProviderInput = connectionInput.extend(providerIdInput.shape);
 
+/** Every provider id, in the new order of the provider list. */
+export const reorderInput = z.object({
+  providerIds: z
+    .array(z.uuid())
+    .max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, { error: '供应商顺序中有重复项' }),
+});
+
 /** The provider's complete model list, replacing the stored one. */
 export const setModelsInput = providerIdInput.extend({
   models: z
@@ -37,3 +45,4 @@ export const setModelsInput = providerIdInput.extend({
 export type CreateProviderInput = z.infer<typeof createProviderInput>;
 export type UpdateProviderInput = z.infer<typeof updateProviderInput>;
 export type SetModelsInput = z.infer<typeof setModelsInput>;
+export type ReorderInput = z.infer<typeof reorderInput>;

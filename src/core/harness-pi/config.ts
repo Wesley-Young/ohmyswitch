@@ -1,7 +1,14 @@
 import type { Endpoint } from '#core/endpoints.ts';
 import { AppError } from '#core/errors.ts';
 import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
-import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue, withOwnedFields } from '#core/jsonc.ts';
+import {
+  isJsonObject,
+  type JsonObject,
+  parseJsonc,
+  reorderJsoncProperties,
+  setJsoncValue,
+  withOwnedFields,
+} from '#core/jsonc.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 
 /**
@@ -166,10 +173,17 @@ function writePiProvider(text: string | undefined, key: string, entry: unknown) 
   return setJsoncValue(base, ['providers', key], entry);
 }
 
+function reorderPiProviders(text: string | undefined, keys: readonly string[]) {
+  if (text === undefined || !text.trim()) return text;
+  readPiProviders(text);
+  return reorderJsoncProperties(text, ['providers'], keys);
+}
+
 export const piAdapter: HarnessAdapter = {
   readProviders: readPiProviders,
   entry: piProviderEntry,
   write: writePiProvider,
+  reorder: reorderPiProviders,
   reservedKeys: builtinProviders,
   // The file holds API keys.
   newFileMode: 0o600,

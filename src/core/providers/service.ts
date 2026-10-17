@@ -8,7 +8,7 @@ import type {} from '#core/models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
-import type { CreateProviderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
+import type { CreateProviderInput, ReorderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
 
@@ -117,6 +117,22 @@ export class ProviderService extends Service {
       draft.providers.push(provider);
     });
     return this.summary(provider);
+  }
+
+  /**
+   * Save the order of the provider list, then put ohmyswitch's entries in every harness in the same order. The ids
+   * must be exactly the current providers; a list that changed meanwhile is rejected so nothing is lost. Harness
+   * failures do not undo the save.
+   */
+  async reorder(input: ReorderInput) {
+    await this.ctx.store.update((draft) => {
+      const byId = new Map(draft.providers.map((provider) => [provider.id, provider]));
+      if (input.providerIds.length !== byId.size || input.providerIds.some((id) => !byId.has(id))) {
+        throw new AppError('conflict', '供应商列表已变化，请重试');
+      }
+      draft.providers = input.providerIds.map((id) => byId.get(id) as StoredProvider);
+    });
+    return { harnessFailures: await this.ctx.harnesses.reorder() };
   }
 
   /** Delete the provider, removing it from every harness it is applied to first. */

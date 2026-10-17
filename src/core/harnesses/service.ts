@@ -214,6 +214,41 @@ export class HarnessService extends Service {
     }
   }
 
+  /**
+   * Put ohmyswitch's entries in every registered harness in the order of the provider list, after it changed. Only
+   * ohmyswitch's entries move, within the positions they occupy. Failures are reported, not thrown; the next
+   * reorder or write of the harness corrects its order.
+   */
+  async reorder(): Promise<HarnessFailure[]> {
+    const failures: HarnessFailure[] = [];
+    for (const harness of this.harnesses()) {
+      const keys = this.orderedKeys(harness.id);
+      if (keys.length < 2) continue;
+      try {
+        await this.track(harness.id, async (harness) => {
+          for (const file of await harness.configFiles(this.environment)) {
+            const { reorder } = file.adapter;
+            if (reorder) await this.editor.edit(harness.name, file, (text) => reorder(text, keys));
+          }
+        });
+      } catch (error) {
+        failures.push({ harnessId: harness.id, message: failureMessage(error) });
+      }
+    }
+    return failures;
+  }
+
+  /**
+   * The keys ohmyswitch owns in a harness, in the order of the provider list. `pending` adds a provider whose key is
+   * not recorded yet, during its first application.
+   */
+  private orderedKeys(harnessId: HarnessId, pending?: { providerId: string; key: string }) {
+    return this.ctx.store.data.providers.flatMap((provider) => {
+      const key = provider.id === pending?.providerId ? pending.key : provider.harnesses[harnessId]?.key;
+      return key ? [key] : [];
+    });
+  }
+
   /** Remove the entry from every file, in reverse write order. Every file is tried; the first failure is reported. */
   private async remove(provider: StoredProvider, harness: HarnessDescriptor): Promise<HarnessFailure | undefined> {
     const key = provider.harnesses[harness.id]?.key;
@@ -266,10 +301,14 @@ export class HarnessService extends Service {
     return key;
   }
 
+  /** Write the provider's entry, and in the same edit put ohmyswitch's entries in order, so a new one lands in place. */
   private writeEntry(harness: HarnessDescriptor, file: HarnessConfigFile, provider: StoredProvider, key: string) {
-    return this.editor.edit(harness.name, file, (text) =>
-      file.adapter.write(text, key, file.adapter.entry(provider, file.adapter.readProviders(text)[key], key)),
-    );
+    const keys = this.orderedKeys(harness.id, { providerId: provider.id, key });
+    return this.editor.edit(harness.name, file, (text) => {
+      const { adapter } = file;
+      const next = adapter.write(text, key, adapter.entry(provider, adapter.readProviders(text)[key], key));
+      return adapter.reorder?.(next, keys) ?? next;
+    });
   }
 
   /** Built-in provider ids of a harness that builds on models.dev. Without the catalog, no new key is assigned. */

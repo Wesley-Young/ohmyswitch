@@ -11,6 +11,12 @@ export interface HarnessAdapter {
   entry(provider: StoredProvider, existing: unknown, key: string): unknown;
   /** The config text with `key` set to `entry`, or removed when `entry` is undefined. */
   write(text: string | undefined, key: string, entry: unknown): string;
+  /**
+   * The config text with the entries named in `keys` (ohmyswitch's, in ohmyswitch's order) rearranged into that
+   * order within the positions they already occupy; other entries stay put, and keys not in the file are skipped.
+   * Returns the text unchanged when the order is already right. Files whose order means nothing leave it out.
+   */
+  reorder?(text: string | undefined, keys: readonly string[]): string | undefined;
   /** Keys that must not be used, such as the harness's built-in provider ids. A harness's files share one key. */
   readonly reservedKeys: ReadonlySet<string>;
   /** Whether the harness's built-in providers come from models.dev, so every catalog provider id is reserved too. */

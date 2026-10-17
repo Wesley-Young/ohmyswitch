@@ -1,7 +1,14 @@
 import type { Endpoint } from '#core/endpoints.ts';
 import { AppError } from '#core/errors.ts';
 import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
-import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue, withOwnedFields } from '#core/jsonc.ts';
+import {
+  isJsonObject,
+  type JsonObject,
+  parseJsonc,
+  reorderJsoncProperties,
+  setJsoncValue,
+  withOwnedFields,
+} from '#core/jsonc.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import { type OpenCodeProtocol, openCodeVariants } from './variants.ts';
 
@@ -131,10 +138,17 @@ function writeOpenCodeProvider(text: string | undefined, key: string, entry: unk
   return setJsoncValue(base, ['providers', key], entry);
 }
 
+function reorderOpenCodeProviders(text: string | undefined, keys: readonly string[]) {
+  if (text === undefined || !text.trim()) return text;
+  parseConfig(text);
+  return reorderJsoncProperties(text, ['providers'], keys);
+}
+
 export const openCodeAdapter: HarnessAdapter = {
   readProviders: (text) => (parseConfig(text).providers as JsonObject | undefined) ?? {},
   entry: openCodeProviderEntry,
   write: writeOpenCodeProvider,
+  reorder: reorderOpenCodeProviders,
   reservedKeys: pluginProviders,
   reservesCatalogProviders: true,
   // V1 `provider` entries with the same key conflict with ours; OpenCode would let the V2 entry win.

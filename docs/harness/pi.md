@@ -113,6 +113,8 @@ E 中 Pi 没有的值（如 `default`）忽略。
 
 取消应用时删除该 key 的整个条目（包括用户在条目内手动加的字段，需确认）。
 
+- 顺序：ohmyswitch 的条目按供应商列表的顺序排列，只在它们已经占据的位置之间调换；用户自己的条目、条目之间的逗号和空白都不动。条目上方单独成行的注释跟着条目移动，写在上一个条目同一行末尾的注释留在原处。写入条目时在同一次编辑中排好顺序（第一次应用的新条目直接排到它的位置）；调整供应商顺序后，单独重排一次。Pi 1.3.0 的模型选择器按 provider key 的字母顺序排列（`modes/interactive/components/model-selector.js` 的 `sortModels`），所以这个顺序在 Pi 的界面上看不出来（版本相关）。
+
 ## 已知限制
 
 - `openai-completions` 的推理参数格式（`compat.thinkingFormat`）由 Pi 按 provider id 和域名自动判断。经中转站访问 DeepSeek、GLM、Qwen 等时判断不出来，会按 OpenAI 格式发送 `reasoning_effort`。models.dev 没有对应数据，暂不处理。
