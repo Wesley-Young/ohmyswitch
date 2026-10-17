@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router';
 
 import { ProviderFields, type ProviderValues } from '@/components/provider-fields';
@@ -11,10 +11,13 @@ export type ProviderPayload = Omit<ProviderValues, 'endpoint'> & { endpoint: End
 
 export const toPayload = (values: ProviderValues) => values as ProviderPayload;
 
-/** The connection form used by the add and edit pages. Models are managed on the provider's page. */
+/** The connection form used by the add, edit and import pages. Models are managed on the provider's page. */
 export function ProviderForm({
   initialValues,
+  endpointOptions,
+  children,
   cancelTo,
+  onCancel,
   submitLabel,
   pendingLabel,
   isPending,
@@ -22,8 +25,12 @@ export function ProviderForm({
   onSubmit,
 }: {
   initialValues: ProviderValues;
+  endpointOptions?: readonly Endpoint[];
+  /** Shown after the fields, before the form error and buttons. */
+  children?: ReactNode;
   /** Where 取消 goes. */
   cancelTo: string;
+  onCancel?: () => void;
   submitLabel: string;
   pendingLabel: string;
   isPending: boolean;
@@ -43,7 +50,13 @@ export function ProviderForm({
         onSubmit(values);
       }}
     >
-      <ProviderFields values={values} onChange={setValues} fieldError={(field) => failure?.fields[field]?.[0]} />
+      <ProviderFields
+        values={values}
+        onChange={setValues}
+        fieldError={(field) => failure?.fields[field]?.[0]}
+        endpointOptions={endpointOptions}
+      />
+      {children}
       {formLevelError && (
         <p role="alert" className="text-sm text-destructive">
           {formLevelError}
@@ -53,7 +66,7 @@ export function ProviderForm({
         <Button type="submit" disabled={isPending}>
           {isPending ? pendingLabel : submitLabel}
         </Button>
-        <Button variant="outline" nativeButton={false} render={<Link to={cancelTo} />}>
+        <Button variant="outline" nativeButton={false} render={<Link to={cancelTo} onClick={onCancel} />}>
           取消
         </Button>
       </div>

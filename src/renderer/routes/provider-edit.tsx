@@ -3,11 +3,11 @@ import { TRPCClientError } from '@trpc/client';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { FormSkeleton } from '@/components/form-skeleton';
 import { useHarnessFeedback } from '@/components/harness-feedback';
 import { PageContent, PageHeader } from '@/components/page';
 import { ProviderForm, toPayload } from '@/components/provider-form';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { refreshProviders } from '@/lib/cache';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
@@ -73,18 +73,5 @@ function EditProviderForm({ providerId, connection }: { providerId: string; conn
       error={update.error}
       onSubmit={(values) => update.mutate({ providerId, ...toPayload(values) })}
     />
-  );
-}
-
-function FormSkeleton() {
-  return (
-    <div className="grid max-w-md gap-6">
-      {[0, 1, 2].map((index) => (
-        <div key={index} className="grid gap-2">
-          <Skeleton className="h-3.5 w-16" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      ))}
-    </div>
   );
 }

@@ -6,7 +6,7 @@ import { baseUrl, iconUrl, modelInfo, providerName } from '../provider.ts';
 export const providerIdInput = z.object({ providerId: z.uuid() });
 
 /** The connection fields of a provider, edited and saved together. */
-export const createProviderInput = z.object({
+const connectionInput = z.object({
   name: providerName,
   baseUrl,
   apiKey: z.string().trim().min(1, { error: '请填写 API Key' }).max(4096),
@@ -15,7 +15,16 @@ export const createProviderInput = z.object({
   iconUrl: iconUrl.optional(),
 });
 
-export const updateProviderInput = createProviderInput.extend(providerIdInput.shape);
+export const createProviderInput = connectionInput.extend({
+  /** Models to start with, such as those an import link lists; their metadata is filled from models.dev. */
+  modelIds: z
+    .array(z.string().trim().min(1).max(256))
+    .max(2000)
+    .optional()
+    .transform((ids) => (ids ? [...new Set(ids)] : undefined)),
+});
+
+export const updateProviderInput = connectionInput.extend(providerIdInput.shape);
 
 /** The provider's complete model list, replacing the stored one. */
 export const setModelsInput = providerIdInput.extend({

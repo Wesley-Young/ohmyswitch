@@ -40,10 +40,13 @@ export function ProviderFields({
   values,
   onChange,
   fieldError,
+  endpointOptions = endpoints,
 }: {
   values: ProviderValues;
   onChange: (values: ProviderValues) => void;
   fieldError: (field: string) => string | undefined;
+  /** The endpoints to choose from, such as those an import link lists; all of them by default. */
+  endpointOptions?: readonly Endpoint[];
 }) {
   const set = <K extends keyof ProviderValues>(key: K, value: ProviderValues[K]) =>
     onChange({ ...values, [key]: value });
@@ -95,7 +98,7 @@ export function ProviderFields({
           aria-invalid={Boolean(fieldError('endpoint'))}
           onValueChange={(value) => set('endpoint', value as Endpoint)}
         >
-          {endpoints.map((endpoint) => (
+          {endpointOptions.map((endpoint) => (
             <Field key={endpoint} orientation="horizontal">
               <RadioGroupItem id={`endpoint-${endpoint}`} value={endpoint} />
               <FieldLabel htmlFor={`endpoint-${endpoint}`} className="font-normal">

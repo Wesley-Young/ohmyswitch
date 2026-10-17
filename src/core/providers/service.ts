@@ -100,6 +100,7 @@ export class ProviderService {
   }
 
   async create(input: CreateProviderInput) {
+    const models = input.modelIds?.length ? await this.initialModels(input.modelIds) : [];
     const provider: StoredProvider = {
       id: randomUUID(),
       name: input.name,
@@ -107,7 +108,7 @@ export class ProviderService {
       endpoint: input.endpoint,
       apiKey: input.apiKey,
       ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
-      models: [],
+      models,
       harnesses: {},
       createdAt: new Date().toISOString(),
     };
@@ -129,6 +130,18 @@ export class ProviderService {
       draft.providers.splice(index, 1);
     });
     await this.deps.icons.forget(providerId);
+  }
+
+  /** Models from their ids, with metadata from models.dev where it is available; without it, ids alone. */
+  private async initialModels(ids: string[]): Promise<ModelInfo[]> {
+    const models = ids.map((id) => ({ id }));
+    try {
+      const index = await this.deps.modelsDev.index();
+      return models.map((model) => index.enrich(model));
+    } catch (error) {
+      this.deps.logger.warn('Failed to load models.dev', error);
+      return models;
+    }
   }
 
   /**

@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { createTRPCClient, httpLink, TRPCClientError } from '@trpc/client';
+import { createTRPCClient, httpLink, httpSubscriptionLink, splitLink, TRPCClientError } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 
 // The only renderer file allowed to reach into the main process, and only for types.
@@ -7,9 +7,18 @@ import type { AppRouter } from '../../main/trpc/router.ts';
 
 export type { RouterInputs, RouterOutputs } from '../../main/trpc/router.ts';
 
-/** The page is served from app://ohmyswitch, so the relative URL reaches the main process handler. */
+/**
+ * The page is served from app://ohmyswitch, so the relative URL reaches the main process handler. Subscriptions
+ * use server-sent events on the same endpoint.
+ */
 export const trpcClient = createTRPCClient<AppRouter>({
-  links: [httpLink({ url: '/api/trpc' })],
+  links: [
+    splitLink({
+      condition: (op) => op.type === 'subscription',
+      true: httpSubscriptionLink({ url: '/api/trpc' }),
+      false: httpLink({ url: '/api/trpc' }),
+    }),
+  ],
 });
 
 export const queryClient = new QueryClient({

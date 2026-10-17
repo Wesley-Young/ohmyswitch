@@ -1,3 +1,4 @@
+import { DeepLinksPlugin } from '../core/deep-links/index.ts';
 import { DshHarnessPlugin } from '../core/harness-dsh/index.ts';
 import { OpenCodeHarnessPlugin } from '../core/harness-opencode/index.ts';
 import { PiHarnessPlugin } from '../core/harness-pi/index.ts';
@@ -29,6 +30,7 @@ export function createApp(config: AppConfig) {
   ctx.install(PiHarnessPlugin);
   ctx.install(DshHarnessPlugin);
   ctx.install(ProvidersPlugin);
+  ctx.install(DeepLinksPlugin);
   ctx.install(ProtocolPlugin, {
     version: config.version,
     rendererDir: config.rendererDir,

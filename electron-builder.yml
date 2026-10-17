@@ -20,3 +20,7 @@ linux:
   icon: build/icon.png
   category: Development
   target: [AppImage]
+# ohmyswitch:// import links, see docs/deep-link.md. Windows registers at runtime via setAsDefaultProtocolClient.
+protocols:
+  - name: ohmyswitch
+    schemes: [ohmyswitch]

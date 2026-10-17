@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 
+import { DeepLinkListener } from '@/components/deep-link-listener';
 import { TopBar } from '@/components/top-bar';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
@@ -23,6 +24,7 @@ export default function App() {
         </div>
       </div>
       <Toaster position="bottom-right" />
+      <DeepLinkListener />
     </TooltipProvider>
   );
 }

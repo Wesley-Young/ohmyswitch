@@ -11,6 +11,7 @@ import { queryClient } from '@/lib/trpc';
 import NotFound from '@/routes/not-found';
 import ProviderDetail from '@/routes/provider-detail';
 import ProviderEdit from '@/routes/provider-edit';
+import ProviderImport from '@/routes/provider-import';
 import ProviderNew from '@/routes/provider-new';
 import Providers from '@/routes/providers';
 import ProvidersIndex from '@/routes/providers-index';
@@ -30,6 +31,7 @@ createRoot(root).render(
             <Route path="providers" element={<Providers />}>
               <Route index element={<ProvidersIndex />} />
               <Route path="new" element={<ProviderNew />} />
+              <Route path="import" element={<ProviderImport />} />
               <Route path=":providerId" element={<ProviderDetail />} />
               <Route path=":providerId/edit" element={<ProviderEdit />} />
             </Route>

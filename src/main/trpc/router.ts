@@ -1,9 +1,11 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 
+import type { DeepLinkService } from '../../core/deep-links/service.ts';
 import type { HarnessService } from '../../core/harnesses/service.ts';
 import type { IconService } from '../../core/icons/service.ts';
 import type { ProviderService } from '../../core/providers/service.ts';
 import { publicProcedure, router } from './procedures.ts';
+import { deepLinkRoutes } from './routes/deep-links.ts';
 import { harnessRoutes } from './routes/harnesses.ts';
 import { iconRoutes } from './routes/icons.ts';
 import { providerRoutes } from './routes/providers.ts';
@@ -13,6 +15,7 @@ export interface RouterServices {
   providers: ProviderService;
   harnesses: HarnessService;
   icons: IconService;
+  deepLinks: DeepLinkService;
 }
 
 /** Combines every module's routes; this is the complete RPC surface. */
@@ -28,6 +31,7 @@ export function createAppRouter(services: RouterServices, version: string) {
     providers: providerRoutes(services.providers),
     harnesses: harnessRoutes(services.harnesses),
     icons: iconRoutes(services.icons),
+    deepLinks: deepLinkRoutes(services.deepLinks),
   });
 }
 
