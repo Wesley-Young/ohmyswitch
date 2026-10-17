@@ -8,7 +8,7 @@ import { DeleteProviderDialog } from '@/components/delete-provider-dialog';
 import { HarnessApplications } from '@/components/harness-applications';
 import { PageContent, PageHeader } from '@/components/page';
 import { ProviderAvatar } from '@/components/provider-avatar';
-import { ModelSummary } from '@/components/provider-models';
+import { ProviderModels } from '@/components/provider-models';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -78,34 +78,9 @@ export default function ProviderDetail() {
             <h2 id="applications-title" className="text-sm font-medium">
               应用到
             </h2>
-            <HarnessApplications providerId={data.id} />
+            <HarnessApplications key={data.id} providerId={data.id} />
           </section>
-          <section className="grid gap-3" aria-labelledby="models-title">
-            <h2 id="models-title" className="text-sm font-medium">
-              模型{data.models.length > 0 && <span className="ml-1.5 text-muted-foreground">{data.models.length}</span>}
-            </h2>
-            {data.models.length ? (
-              <ul className="divide-y rounded-lg border bg-card">
-                {data.models.map((model) => (
-                  <li key={model.id} className="flex items-center gap-3 px-4 py-2.5">
-                    <ModelSummary model={model} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex items-center justify-between rounded-lg border px-4 py-3 text-sm">
-                <span className="text-muted-foreground">还没有模型</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  nativeButton={false}
-                  render={<Link to={`/providers/${data.id}/edit`} />}
-                >
-                  获取模型
-                </Button>
-              </div>
-            )}
-          </section>
+          <ProviderModels key={data.id} providerId={data.id} providerName={data.name} models={data.models} />
         </div>
       </PageContent>
       <DeleteProviderDialog

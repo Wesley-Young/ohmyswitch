@@ -1,22 +1,20 @@
 import { publicProcedure } from '../../trpc/procedures.ts';
-import {
-  createProviderInput,
-  providerIdInput,
-  providerSourceInput,
-  syncModelsInput,
-  updateProviderInput,
-} from './schemas.ts';
+import { createProviderInput, providerIdInput, setModelsInput, updateProviderInput } from './schemas.ts';
 import type { ProviderService } from './service.ts';
 
 export function providerRoutes(providers: ProviderService) {
   return {
     list: publicProcedure.query(() => providers.list()),
     get: publicProcedure.input(providerIdInput).query(({ input }) => providers.get(input.providerId)),
-    update: publicProcedure.input(updateProviderInput).mutation(({ input }) => providers.update(input)),
-    // A mutation rather than a query so the API key travels in the request body, not the URL.
-    fetchModels: publicProcedure.input(providerSourceInput).mutation(({ input }) => providers.fetchModels(input)),
-    syncModels: publicProcedure.input(syncModelsInput).mutation(({ input }) => providers.syncModels(input)),
+    connection: publicProcedure.input(providerIdInput).query(({ input }) => providers.connection(input.providerId)),
     create: publicProcedure.input(createProviderInput).mutation(({ input }) => providers.create(input)),
+    update: publicProcedure.input(updateProviderInput).mutation(({ input }) => providers.update(input)),
     delete: publicProcedure.input(providerIdInput).mutation(({ input }) => providers.delete(input.providerId)),
+    // A mutation: it reaches out to the provider and should run only when asked.
+    fetchModels: publicProcedure
+      .input(providerIdInput)
+      .mutation(({ input }) => providers.fetchModels(input.providerId)),
+    setModels: publicProcedure.input(setModelsInput).mutation(({ input }) => providers.setModels(input)),
+    syncModels: publicProcedure.input(providerIdInput).mutation(({ input }) => providers.syncModels(input.providerId)),
   };
 }

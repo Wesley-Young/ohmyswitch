@@ -110,7 +110,7 @@ function ModelEditForm({ model, onSave }: { model: Model; onSave: (model: Model)
       noValidate
       className="grid min-w-0 gap-5"
       onSubmit={(event) => {
-        // The dialog is portaled, but React still bubbles submit to the page form.
+        // The dialog is portaled, but React still bubbles submit through the component tree; keep it here.
         event.preventDefault();
         event.stopPropagation();
         setSubmitted(true);

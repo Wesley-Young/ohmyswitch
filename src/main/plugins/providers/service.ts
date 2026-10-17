@@ -6,11 +6,11 @@ import type { ModelInfo, StoredProvider } from '../../../core/provider.ts';
 import type { HarnessService } from '../harnesses/service.ts';
 import type { ModelsDevService } from '../models-dev/service.ts';
 import type { StoreService } from '../store/service.ts';
-import type { CreateProviderInput, ProviderSourceInput, SyncModelsInput, UpdateProviderInput } from './schemas.ts';
+import type { CreateProviderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
 
-/** The list view of a provider; the API key is left out because lists never show it. */
+/** The list view of a provider; the API key is left out because only the connection editor shows it. */
 function summary(provider: StoredProvider) {
   return {
     id: provider.id,
@@ -49,68 +49,68 @@ export class ProviderService {
     return this.store.data.providers.map(summary);
   }
 
-  /** The editable view of a provider, including the API key so the edit page can show it. */
+  /** The detail view of a provider, with its models. */
   get(providerId: string) {
     const provider = this.find(this.store.data.providers, providerId);
-    return { ...summary(provider), apiKey: provider.apiKey, models: provider.models };
+    return { ...summary(provider), models: provider.models };
+  }
+
+  /** The connection fields for the editor, the only place the API key is returned. */
+  connection(providerId: string) {
+    const { name, baseUrl, apiKey, endpoint } = this.find(this.store.data.providers, providerId);
+    return { name, baseUrl, apiKey, endpoint };
   }
 
   /**
-   * Ask the provider which models it serves, then fill missing metadata from models.dev. Works on unsaved form
-   * values, so nothing is stored. models.dev failing does not fail the request; it is reported alongside.
+   * Ask the provider which models it serves, using its saved connection, then fill missing metadata from
+   * models.dev. Nothing is stored: the user picks which models to keep. models.dev failing does not fail the
+   * request; it is reported alongside.
    */
-  async fetchModels(input: ProviderSourceInput): Promise<{ models: ModelInfo[]; metadataError?: string }> {
-    const { models } = await fetchModelCatalog(input, this.fetch, AbortSignal.timeout(20_000));
+  async fetchModels(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+    const provider = this.find(this.store.data.providers, providerId);
+    const { models } = await fetchModelCatalog(provider, this.fetch, AbortSignal.timeout(20_000));
     try {
       const index = await this.modelsDev.index();
       return { models: models.map((model) => index.enrich(model)) };
     } catch (error) {
       this.logger.warn('Failed to load models.dev', error);
-      return {
-        models,
-        metadataError: error instanceof AppError ? error.message : '无法读取 models.dev',
-      };
+      return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
     }
   }
 
-  /**
-   * Overwrite model metadata with models.dev values where it has them. Works on unsaved form values, so nothing
-   * is stored. Unlike the fill after fetching, this is an explicit request and models.dev failing is an error.
-   */
-  async syncModels(input: SyncModelsInput) {
-    const index = await this.modelsDev.index();
-    const results = input.models.map((model) => index.sync(model));
-    return {
-      models: results.map((result) => result.model),
-      unmatched: results.filter((result) => !result.matched).length,
-    };
+  /** Replace the provider's model list and rewrite it in the harnesses it is applied to. */
+  setModels(input: SetModelsInput) {
+    return this.save(input.providerId, (provider) => {
+      provider.models = input.models;
+    });
   }
 
   /**
-   * Save the provider, then rewrite it in every harness it is applied to. Harness failures do not undo the save;
-   * they are returned so the user can see which configs are out of date.
+   * Overwrite model metadata with models.dev values where it has them, save, and rewrite the harnesses. Unlike
+   * the fill after fetching, this is an explicit request, so models.dev failing is an error.
    */
-  async update(input: UpdateProviderInput) {
-    const saved = await this.store.update((draft) => {
-      const provider = this.find(draft.providers, input.providerId);
-      if (draft.providers.some((item) => item.id !== provider.id && item.name === input.name)) {
+  async syncModels(providerId: string) {
+    const index = await this.modelsDev.index();
+    let unmatched = 0;
+    const result = await this.save(providerId, (provider) => {
+      const results = provider.models.map((model) => index.sync(model));
+      unmatched = results.filter((item) => !item.matched).length;
+      provider.models = results.map((item) => item.model);
+    });
+    return { ...result, unmatched };
+  }
+
+  /** Save the connection fields and rewrite the harnesses the provider is applied to. */
+  update(input: UpdateProviderInput) {
+    return this.save(input.providerId, (provider, providers) => {
+      if (providers.some((item) => item.id !== provider.id && item.name === input.name)) {
         throw new AppError('conflict', `已有名为「${input.name}」的供应商`);
       }
       provider.name = input.name;
+      provider.baseUrl = input.baseUrl;
       provider.apiKey = input.apiKey;
       provider.endpoint = input.endpoint;
-      provider.models = input.models;
-      provider.baseUrl = input.baseUrl;
-      return provider;
     });
-    const harnessFailures = await this.harnesses.syncProvider(saved);
-    return { ...summary(saved), harnessFailures };
-  }
-
-  private find<T extends StoredProvider>(providers: readonly T[], providerId: string) {
-    const provider = providers.find((item) => item.id === providerId);
-    if (!provider) throw new AppError('not_found', '供应商不存在或已删除');
-    return provider;
   }
 
   async create(input: CreateProviderInput) {
@@ -120,7 +120,7 @@ export class ProviderService {
       baseUrl: input.baseUrl,
       endpoint: input.endpoint,
       apiKey: input.apiKey,
-      models: input.models,
+      models: [],
       harnesses: {},
       createdAt: new Date().toISOString(),
     };
@@ -141,5 +141,28 @@ export class ProviderService {
       if (index < 0) throw new AppError('not_found', '供应商不存在或已删除');
       draft.providers.splice(index, 1);
     });
+  }
+
+  /**
+   * Change a provider, then rewrite it in every harness it is applied to. Harness failures do not undo the save;
+   * they are returned so the user can see which configs are out of date.
+   */
+  private async save(
+    providerId: string,
+    change: (provider: StoredProvider, providers: readonly StoredProvider[]) => void,
+  ) {
+    const saved = await this.store.update((draft) => {
+      const provider = this.find(draft.providers, providerId);
+      change(provider, draft.providers);
+      return provider;
+    });
+    const harnessFailures = await this.harnesses.syncProvider(saved);
+    return { ...summary(saved), harnessFailures };
+  }
+
+  private find<T extends StoredProvider>(providers: readonly T[], providerId: string) {
+    const provider = providers.find((item) => item.id === providerId);
+    if (!provider) throw new AppError('not_found', '供应商不存在或已删除');
+    return provider;
   }
 }

@@ -3,7 +3,6 @@ import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { type Endpoint, endpointLabels, endpoints } from '@/lib/endpoints';
-import type { Model } from '@/lib/models';
 
 export interface ProviderValues {
   name: string;
@@ -11,7 +10,6 @@ export interface ProviderValues {
   apiKey: string;
   /** Unset until the user picks one; there is no default endpoint. */
   endpoint: Endpoint | undefined;
-  models: Model[];
 }
 
 export const emptyProviderValues: ProviderValues = {
@@ -19,7 +17,6 @@ export const emptyProviderValues: ProviderValues = {
   baseUrl: '',
   apiKey: '',
   endpoint: undefined,
-  models: [],
 };
 
 /** The connection fields of a provider: name, Base URL, API Key and endpoint. Only the text inputs are width-limited. */

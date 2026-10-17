@@ -3,6 +3,7 @@ import { TRPCClientError } from '@trpc/client';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { useHarnessFeedback } from '@/components/harness-feedback';
 import { PageContent, PageHeader } from '@/components/page';
 import { ProviderForm, toPayload } from '@/components/provider-form';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { refreshProviders } from '@/lib/cache';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
-type ProviderDetail = RouterOutputs['providers']['get'];
+type Connection = RouterOutputs['providers']['connection'];
 
 export default function ProviderEdit() {
   const { providerId = '' } = useParams();
-  const provider = useQuery(trpc.providers.get.queryOptions({ providerId }, { staleTime: 0 }));
+  const provider = useQuery(trpc.providers.connection.queryOptions({ providerId }, { staleTime: 0 }));
   const notFound = provider.error instanceof TRPCClientError && provider.error.data?.code === 'NOT_FOUND';
 
   return (
@@ -37,7 +38,7 @@ export default function ProviderEdit() {
             )}
           </div>
         ) : (
-          <EditProviderForm key={provider.data.id} provider={provider.data} />
+          <EditProviderForm key={providerId} providerId={providerId} connection={provider.data} />
         )}
       </PageContent>
     </>
@@ -45,21 +46,17 @@ export default function ProviderEdit() {
 }
 
 /** Keyed by provider id, so the form state is initialized once from the loaded provider. */
-function EditProviderForm({ provider }: { provider: ProviderDetail }) {
+function EditProviderForm({ providerId, connection }: { providerId: string; connection: Connection }) {
   const navigate = useNavigate();
-  const harnesses = useQuery(trpc.harnesses.list.queryOptions());
-  const nameOf = (harnessId: string) => harnesses.data?.find((harness) => harness.id === harnessId)?.name ?? harnessId;
+  const report = useHarnessFeedback();
   const update = useMutation(
     trpc.providers.update.mutationOptions({
       onSuccess: async (saved) => {
         await refreshProviders();
-        const failed = new Set(saved.harnessFailures.map((failure) => failure.harnessId));
-        const updated = saved.harnesses.filter((harnessId) => !failed.has(harnessId)).map(nameOf);
-        toast.success(
-          updated.length ? `已保存「${saved.name}」，并更新了 ${updated.join('、')}` : `已保存「${saved.name}」`,
-        );
-        for (const failure of saved.harnessFailures) {
-          toast.error(`未能更新 ${nameOf(failure.harnessId)}：${failure.message}`);
+        report(`已保存「${saved.name}」`, saved);
+        // Models fetched for the old protocol may not be served on the new one.
+        if (saved.endpoint !== connection.endpoint && saved.modelCount > 0) {
+          toast.warning('端点已变更，建议重新获取模型');
         }
         navigate(`/providers/${saved.id}`);
       },
@@ -68,19 +65,13 @@ function EditProviderForm({ provider }: { provider: ProviderDetail }) {
 
   return (
     <ProviderForm
-      cancelTo={`/providers/${provider.id}`}
-      initialValues={{
-        name: provider.name,
-        baseUrl: provider.baseUrl,
-        apiKey: provider.apiKey,
-        endpoint: provider.endpoint,
-        models: provider.models,
-      }}
+      cancelTo={`/providers/${providerId}`}
+      initialValues={connection}
       submitLabel="保存"
       pendingLabel="正在保存…"
       isPending={update.isPending}
       error={update.error}
-      onSubmit={(values) => update.mutate({ providerId: provider.id, ...toPayload(values) })}
+      onSubmit={(values) => update.mutate({ providerId, ...toPayload(values) })}
     />
   );
 }
