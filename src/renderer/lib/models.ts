@@ -1,6 +1,31 @@
 import type { RouterOutputs } from './trpc';
 
 export type Model = RouterOutputs['providers']['get']['models'][number];
+export type ModelInput = NonNullable<Model['input']>[number];
+export type ReasoningOption = NonNullable<Model['reasoningOptions']>[number];
+
+export const effortValues = (options: readonly ReasoningOption[] | undefined) =>
+  options?.find((option) => option.type === 'effort')?.values ?? [];
+
+/** A short description of how reasoning is controlled, or undefined when the model does not reason. */
+export function reasoningLabel(model: Model) {
+  if (!model.reasoning) return undefined;
+  const options = model.reasoningOptions;
+  const efforts = effortValues(options);
+  if (efforts.length) return `推理 (${efforts.length > 1 ? `${efforts[0]}–${efforts.at(-1)}` : efforts[0]})`;
+  if (options?.some((option) => option.type === 'budget_tokens')) return '推理 (按预算)';
+  if (options?.length === 0) return '推理 (不可调)';
+  return '推理';
+}
+
+export const inputLabels = {
+  text: '文本',
+  image: '图片',
+  pdf: 'PDF',
+} satisfies Record<ModelInput, string>;
+
+/** Inputs the user can toggle; text is always accepted. */
+export const optionalInputs = (Object.keys(inputLabels) as ModelInput[]).filter((input) => input !== 'text');
 
 /** Compact token count: 128000 → 128K, 131072 → 128K, 1048576 → 1M. */
 export function formatTokens(tokens: number) {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { Endpoint } from './endpoints.ts';
 import { AppError } from './errors.ts';
+import { BodyTooLargeError, readLimitedText } from './http.ts';
 import type { ModelInfo } from './provider.ts';
 
 /** Model list formats; the provider's endpoint decides which one to use. */
@@ -184,30 +185,17 @@ async function request(fetch: CatalogFetch, url: URL, headers: Record<string, st
       throw new AppError('bad_gateway', '供应商不支持获取模型列表（HTTP 404），请检查 Base URL');
     throw new AppError('bad_gateway', `获取模型失败，供应商返回 HTTP ${response.status}`);
   }
-  const text = await readText(response);
+  let text: string;
+  try {
+    text = await readLimitedText(response, maxPageBytes);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) throw new AppError('bad_gateway', '供应商返回的模型列表过大');
+    if (signal.aborted) throw new AppError('bad_gateway', '连接供应商超时，请稍后重试', { cause: error });
+    throw new AppError('bad_gateway', '读取模型列表时连接中断', { cause: error });
+  }
   try {
     return JSON.parse(text) as unknown;
   } catch (error) {
     throw new AppError('bad_gateway', '无法识别供应商返回的模型列表', { cause: error });
   }
-}
-
-async function readText(response: Response) {
-  const reader = response.body?.getReader();
-  if (!reader) return '';
-  const chunks: Uint8Array[] = [];
-  let bytes = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > maxPageBytes) throw new AppError('bad_gateway', '供应商返回的模型列表过大');
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel().catch(() => {});
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks).toString('utf8');
 }

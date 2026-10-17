@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 
 import { ProviderFields, type ProviderValues } from '@/components/provider-fields';
 import { ModelPickerDialog, ProviderModels } from '@/components/provider-models';
@@ -33,7 +34,27 @@ export function ProviderForm({
   const [picking, setPicking] = useState(false);
   // Field errors shown come from whichever request ran last: saving, or fetching models.
   const [lastAction, setLastAction] = useState<'submit' | 'fetch'>('submit');
-  const fetchModels = useMutation(trpc.providers.fetchModels.mutationOptions({ onSuccess: () => setPicking(true) }));
+  const fetchModels = useMutation(
+    trpc.providers.fetchModels.mutationOptions({
+      onSuccess: ({ metadataError }) => {
+        if (metadataError) toast.warning(`未能补全模型信息：${metadataError}`);
+        setPicking(true);
+      },
+    }),
+  );
+
+  const syncModels = useMutation(
+    trpc.providers.syncModels.mutationOptions({
+      onSuccess: ({ models, unmatched }) => {
+        setValues((previous) => ({ ...previous, models }));
+        const synced = models.length - unmatched;
+        if (!synced) toast.warning('models.dev 中没有找到这些模型');
+        else if (unmatched) toast.success(`已同步 ${synced} 个模型，${unmatched} 个未在 models.dev 找到`);
+        else toast.success(`已同步 ${synced} 个模型`);
+      },
+      onError: (failure) => toast.error(formError(failure)?.message),
+    }),
+  );
 
   const submitError = formError(error);
   const fetchError = formError(fetchModels.error);
@@ -59,6 +80,8 @@ export function ProviderForm({
         onChange={(models) => setValues({ ...values, models })}
         fetching={fetchModels.isPending}
         fetchError={lastAction === 'fetch' ? messageOnly(fetchError) : undefined}
+        syncing={syncModels.isPending}
+        onSync={() => syncModels.mutate({ models: values.models })}
         onFetch={() => {
           setLastAction('fetch');
           const { baseUrl, apiKey, endpoint } = toPayload(values);
@@ -81,7 +104,7 @@ export function ProviderForm({
       <ModelPickerDialog
         open={picking}
         onOpenChange={setPicking}
-        remote={fetchModels.data ?? []}
+        remote={fetchModels.data?.models ?? []}
         current={values.models}
         onConfirm={(models) => setValues((previous) => ({ ...previous, models }))}
       />

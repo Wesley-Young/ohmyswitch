@@ -1,10 +1,11 @@
-import { serviceToken } from '@fraqjs/kernel';
+import { type Logger, serviceToken } from '@fraqjs/kernel';
 
 import { AppError } from '../../../core/errors.ts';
 import { type CatalogFetch, fetchModelCatalog } from '../../../core/model-catalog.ts';
-import type { StoredProvider } from '../../../core/provider.ts';
+import type { ModelInfo, StoredProvider } from '../../../core/provider.ts';
 import type { StoreService } from '../store/service.ts';
-import type { CreateProviderInput, ProviderSourceInput, UpdateProviderInput } from './schemas.ts';
+import type { ModelsDevCatalog } from './models-dev.ts';
+import type { CreateProviderInput, ProviderSourceInput, SyncModelsInput, UpdateProviderInput } from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
 
@@ -24,10 +25,14 @@ export class ProviderService {
   static readonly token = serviceToken<ProviderService>('ohmyswitch/providers');
   private readonly store: StoreService;
   private readonly fetch: CatalogFetch;
+  private readonly modelsDev: ModelsDevCatalog;
+  private readonly logger: Logger;
 
-  constructor(store: StoreService, fetch: CatalogFetch) {
+  constructor(store: StoreService, fetch: CatalogFetch, modelsDev: ModelsDevCatalog, logger: Logger) {
     this.store = store;
     this.fetch = fetch;
+    this.modelsDev = modelsDev;
+    this.logger = logger;
   }
 
   list() {
@@ -40,10 +45,35 @@ export class ProviderService {
     return { ...summary(provider), apiKey: provider.apiKey, models: provider.models };
   }
 
-  /** Ask the provider which models it serves. Works on unsaved form values, so nothing is stored. */
-  async fetchModels(input: ProviderSourceInput) {
+  /**
+   * Ask the provider which models it serves, then fill missing metadata from models.dev. Works on unsaved form
+   * values, so nothing is stored. models.dev failing does not fail the request; it is reported alongside.
+   */
+  async fetchModels(input: ProviderSourceInput): Promise<{ models: ModelInfo[]; metadataError?: string }> {
     const { models } = await fetchModelCatalog(input, this.fetch, AbortSignal.timeout(20_000));
-    return models;
+    try {
+      const index = await this.modelsDev.index();
+      return { models: models.map((model) => index.enrich(model)) };
+    } catch (error) {
+      this.logger.warn('Failed to load models.dev', error);
+      return {
+        models,
+        metadataError: error instanceof AppError ? error.message : '无法读取 models.dev',
+      };
+    }
+  }
+
+  /**
+   * Overwrite model metadata with models.dev values where it has them. Works on unsaved form values, so nothing
+   * is stored. Unlike the fill after fetching, this is an explicit request and models.dev failing is an error.
+   */
+  async syncModels(input: SyncModelsInput) {
+    const index = await this.modelsDev.index();
+    const results = input.models.map((model) => index.sync(model));
+    return {
+      models: results.map((result) => result.model),
+      unmatched: results.filter((result) => !result.matched).length,
+    };
   }
 
   async update(input: UpdateProviderInput) {

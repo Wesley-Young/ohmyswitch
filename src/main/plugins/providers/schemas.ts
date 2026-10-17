@@ -12,16 +12,18 @@ export const providerSourceInput = z.object({
   endpoint: z.enum(endpoints, { error: '请选择端点' }),
 });
 
-export const createProviderInput = providerSourceInput.extend({
-  name: providerName,
-  models: z
-    .array(modelInfo)
-    .max(2000)
-    .transform((models) => [...new Map(models.map((model) => [model.id, model])).values()]),
-});
+const modelList = z
+  .array(modelInfo)
+  .max(2000)
+  .transform((models) => [...new Map(models.map((model) => [model.id, model])).values()]);
+
+export const createProviderInput = providerSourceInput.extend({ name: providerName, models: modelList });
+
+export const syncModelsInput = z.object({ models: modelList });
 
 export const updateProviderInput = createProviderInput.extend(providerIdInput.shape);
 
 export type ProviderSourceInput = z.infer<typeof providerSourceInput>;
 export type CreateProviderInput = z.infer<typeof createProviderInput>;
 export type UpdateProviderInput = z.infer<typeof updateProviderInput>;
+export type SyncModelsInput = z.infer<typeof syncModelsInput>;
