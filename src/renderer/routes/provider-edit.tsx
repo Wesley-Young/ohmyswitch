@@ -47,11 +47,20 @@ export default function ProviderEdit() {
 /** Keyed by provider id, so the form state is initialized once from the loaded provider. */
 function EditProviderForm({ provider }: { provider: ProviderDetail }) {
   const navigate = useNavigate();
+  const harnesses = useQuery(trpc.harnesses.list.queryOptions());
+  const nameOf = (harnessId: string) => harnesses.data?.find((harness) => harness.id === harnessId)?.name ?? harnessId;
   const update = useMutation(
     trpc.providers.update.mutationOptions({
       onSuccess: async (saved) => {
         await refreshProviders();
-        toast.success(`已保存「${saved.name}」`);
+        const failed = new Set(saved.harnessFailures.map((failure) => failure.harnessId));
+        const updated = saved.harnesses.filter((harnessId) => !failed.has(harnessId)).map(nameOf);
+        toast.success(
+          updated.length ? `已保存「${saved.name}」，并更新了 ${updated.join('、')}` : `已保存「${saved.name}」`,
+        );
+        for (const failure of saved.harnessFailures) {
+          toast.error(`未能更新 ${nameOf(failure.harnessId)}：${failure.message}`);
+        }
         navigate('/providers');
       },
     }),

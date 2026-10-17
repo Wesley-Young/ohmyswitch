@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import {
@@ -25,6 +25,10 @@ export function DeleteProviderDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const harnesses = useQuery(trpc.harnesses.list.queryOptions());
+  const applied = (provider?.harnesses ?? []).map(
+    (harnessId) => harnesses.data?.find((harness) => harness.id === harnessId)?.name ?? harnessId,
+  );
   const remove = useMutation(
     trpc.providers.delete.mutationOptions({
       onSuccess: async () => {
@@ -39,7 +43,11 @@ export function DeleteProviderDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>删除「{provider?.name}」？</AlertDialogTitle>
-          <AlertDialogDescription>只从 ohmyswitch 中删除，不会改动各 Harness 的配置文件。</AlertDialogDescription>
+          <AlertDialogDescription>
+            {applied.length
+              ? `会同时从 ${applied.join('、')} 的配置中移除。`
+              : '只从 ohmyswitch 中删除，不会改动各 Harness 的配置文件。'}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>取消</AlertDialogCancel>

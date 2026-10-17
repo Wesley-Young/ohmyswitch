@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { endpoints } from './endpoints.ts';
+import { harnessIds } from './harness/types.ts';
 
 export const providerName = z
   .string()
@@ -8,12 +9,15 @@ export const providerName = z
   .min(1, { error: '请填写名称' })
   .max(128, { error: '名称最多 128 个字符' });
 
-/** An http(s) root address without a trailing slash. */
+/**
+ * An http(s) root address without a trailing slash. A trailing `/v1` or `/v1beta` is dropped: endpoints and
+ * harness adapters append the version path themselves, so keeping it would double it.
+ */
 export const baseUrl = z
   .string()
   .trim()
   .pipe(z.url({ protocol: /^https?$/, error: '请填写 http 或 https 地址' }))
-  .transform((value) => value.replace(/\/+$/, ''));
+  .transform((value) => value.replace(/\/+$/, '').replace(/\/(v1|v1beta)$/, ''));
 
 /** Input kinds a model accepts. Text is always accepted; the others are listed when supported. */
 export const modelInputs = ['text', 'image', 'pdf'] as const;
@@ -72,6 +76,8 @@ export const storedProvider = z.object({
   endpoint: z.enum(endpoints),
   apiKey: z.string(),
   models: z.array(modelInfo),
+  /** Harnesses this provider is applied to, with the key ohmyswitch owns in each harness config. */
+  harnesses: z.partialRecord(z.enum(harnessIds), z.object({ key: z.string().min(1).max(64) })).default({}),
   createdAt: z.iso.datetime(),
 });
 

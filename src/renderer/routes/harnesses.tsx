@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 
 import { HarnessIcon } from '@/components/harness-icon';
 import { PageContent, PageHeader } from '@/components/page';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formError, trpc } from '@/lib/trpc';
@@ -42,6 +43,11 @@ export default function Harnesses() {
                     {harness.configPath}
                   </div>
                 </div>
+                {!harness.supported && (
+                  <Badge variant="outline" className="shrink-0 font-normal text-muted-foreground">
+                    暂不支持
+                  </Badge>
+                )}
                 <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
                   <span
                     className={cn('size-2 rounded-full', harness.detected ? 'bg-success' : 'bg-muted-foreground/40')}

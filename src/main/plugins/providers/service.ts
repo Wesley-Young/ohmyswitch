@@ -3,6 +3,7 @@ import { type Logger, serviceToken } from '@fraqjs/kernel';
 import { AppError } from '../../../core/errors.ts';
 import { type CatalogFetch, fetchModelCatalog } from '../../../core/model-catalog.ts';
 import type { ModelInfo, StoredProvider } from '../../../core/provider.ts';
+import type { HarnessService } from '../harnesses/service.ts';
 import type { StoreService } from '../store/service.ts';
 import type { ModelsDevCatalog } from './models-dev.ts';
 import type { CreateProviderInput, ProviderSourceInput, SyncModelsInput, UpdateProviderInput } from './schemas.ts';
@@ -17,6 +18,7 @@ function summary(provider: StoredProvider) {
     baseUrl: provider.baseUrl,
     endpoint: provider.endpoint,
     modelCount: provider.models.length,
+    harnesses: Object.keys(provider.harnesses) as (keyof StoredProvider['harnesses'])[],
     createdAt: provider.createdAt,
   };
 }
@@ -24,12 +26,20 @@ function summary(provider: StoredProvider) {
 export class ProviderService {
   static readonly token = serviceToken<ProviderService>('ohmyswitch/providers');
   private readonly store: StoreService;
+  private readonly harnesses: HarnessService;
   private readonly fetch: CatalogFetch;
   private readonly modelsDev: ModelsDevCatalog;
   private readonly logger: Logger;
 
-  constructor(store: StoreService, fetch: CatalogFetch, modelsDev: ModelsDevCatalog, logger: Logger) {
+  constructor(
+    store: StoreService,
+    harnesses: HarnessService,
+    fetch: CatalogFetch,
+    modelsDev: ModelsDevCatalog,
+    logger: Logger,
+  ) {
     this.store = store;
+    this.harnesses = harnesses;
     this.fetch = fetch;
     this.modelsDev = modelsDev;
     this.logger = logger;
@@ -76,8 +86,12 @@ export class ProviderService {
     };
   }
 
+  /**
+   * Save the provider, then rewrite it in every harness it is applied to. Harness failures do not undo the save;
+   * they are returned so the user can see which configs are out of date.
+   */
   async update(input: UpdateProviderInput) {
-    return this.store.update((draft) => {
+    const saved = await this.store.update((draft) => {
       const provider = this.find(draft.providers, input.providerId);
       if (draft.providers.some((item) => item.id !== provider.id && item.name === input.name)) {
         throw new AppError('conflict', `已有名为「${input.name}」的供应商`);
@@ -87,8 +101,10 @@ export class ProviderService {
       provider.endpoint = input.endpoint;
       provider.models = input.models;
       provider.baseUrl = input.baseUrl;
-      return summary(provider);
+      return provider;
     });
+    const harnessFailures = await this.harnesses.syncProvider(saved);
+    return { ...summary(saved), harnessFailures };
   }
 
   private find<T extends StoredProvider>(providers: readonly T[], providerId: string) {
@@ -105,6 +121,7 @@ export class ProviderService {
       endpoint: input.endpoint,
       apiKey: input.apiKey,
       models: input.models,
+      harnesses: {},
       createdAt: new Date().toISOString(),
     };
     await this.store.update((draft) => {
@@ -116,7 +133,9 @@ export class ProviderService {
     return summary(provider);
   }
 
+  /** Delete the provider, removing it from every harness it is applied to first. */
   async delete(providerId: string) {
+    await this.harnesses.removeProvider(this.find(this.store.data.providers, providerId));
     await this.store.update((draft) => {
       const index = draft.providers.findIndex((item) => item.id === providerId);
       if (index < 0) throw new AppError('not_found', '供应商不存在或已删除');

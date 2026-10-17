@@ -10,7 +10,7 @@
 
 ## 目录与依赖方向
 
-- `src/core/`：与 Electron 无关的领域模型和纯逻辑，包括供应商 schema、Harness 描述、配置投影和原子写入。只依赖 Node 内置模块和 zod，Node 可以直接运行。
+- `src/core/`：与 Electron 无关的领域模型和纯逻辑，包括供应商 schema、Harness 描述、配置投影和原子写入。只依赖 Node 内置模块、zod 和 jsonc-parser（编辑带注释的 JSON 配置），Node 可以直接运行。
 - `src/main/`：主进程。`index.ts` 管理 Electron 生命周期，`app.ts` 装配插件，`plugins/` 按业务模块划分，`trpc/` 汇总路由。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
@@ -31,7 +31,8 @@
   - 使用原子写入。写入前比对文件内容，发现外部改动过就停下来重新读取。
   - 不写默认供应商和默认模型。
   - 不读写 Harness 的登录凭据文件（如 Pi 的 `auth.json`）。
-  - 实现某个 Harness 之前，先在 `docs/harness/<id>.md` 写明它的原生配置契约（读写哪些文件和字段、明确不碰哪些）。
+  - 实现某个 Harness 之前，先在 `docs/harness/<id>.md` 写明它的原生配置契约（读写哪些文件和字段、明确不碰哪些）。契约以 Harness 的源码为准，注明核对的版本。
+  - 每个 Harness 的读写逻辑是 `core/harness/` 中的一个 `HarnessAdapter`（只做文本到文本的转换），文件访问、写前比对和记录在 `HarnessService` 中。保持实现与契约文档一致。
 
 ## 渲染进程
 

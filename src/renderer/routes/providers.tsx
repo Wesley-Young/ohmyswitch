@@ -3,6 +3,7 @@ import { KeyRound, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
+import { type Application, ApplyMenu } from '@/components/apply-menu';
 import { DeleteProviderDialog } from '@/components/delete-provider-dialog';
 import { PageContent, PageHeader } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +20,13 @@ import { endpointLabels } from '@/lib/endpoints';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
 type Provider = RouterOutputs['providers']['list'][number];
+type Harness = RouterOutputs['harnesses']['list'][number];
 
 export default function Providers() {
   const providers = useQuery(trpc.providers.list.queryOptions());
+  // Harness configs can change outside ohmyswitch, so their state is always read fresh.
+  const harnesses = useQuery(trpc.harnesses.list.queryOptions(undefined, { staleTime: 0 }));
+  const applications = useQuery(trpc.harnesses.applications.queryOptions(undefined, { staleTime: 0 }));
   const [deleting, setDeleting] = useState<Provider>();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -61,6 +66,8 @@ export default function Providers() {
               <ProviderRow
                 key={provider.id}
                 provider={provider}
+                harnesses={harnesses.data ?? []}
+                applications={applications.data?.[provider.id] ?? []}
                 onDelete={() => {
                   setDeleting(provider);
                   setConfirmOpen(true);
@@ -75,7 +82,17 @@ export default function Providers() {
   );
 }
 
-function ProviderRow({ provider, onDelete }: { provider: Provider; onDelete: () => void }) {
+function ProviderRow({
+  provider,
+  harnesses,
+  applications,
+  onDelete,
+}: {
+  provider: Provider;
+  harnesses: Harness[];
+  applications: Application[];
+  onDelete: () => void;
+}) {
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full border bg-muted text-xs font-medium uppercase">
@@ -99,6 +116,7 @@ function ProviderRow({ provider, onDelete }: { provider: Provider; onDelete: () 
         </Badge>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <ApplyMenu providerId={provider.id} harnesses={harnesses} applications={applications} />
         <Button
           variant="ghost"
           size="icon-sm"

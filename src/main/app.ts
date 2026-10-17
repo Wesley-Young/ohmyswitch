@@ -10,8 +10,8 @@ export function createApp(config: AppConfig) {
   const ctx = AppContext.create(config);
   ctx.logBus.on('log', logHandler);
   ctx.install(StorePlugin);
-  ctx.install(ProvidersPlugin);
   ctx.install(HarnessesPlugin);
+  ctx.install(ProvidersPlugin);
   ctx.install(ProtocolPlugin);
   return ctx;
 }
