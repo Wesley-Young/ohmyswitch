@@ -18,8 +18,16 @@
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
 - `src/core`、`src/main` 中只有同目录的文件用相对导入（`./x.ts`），离开当前目录就用 `package.json` 的 subpath imports：`#core/*`、`#main/*`、`#build/*`（窗口图标等构建资源），都写 `.ts` 后缀，不写 `../`。渲染进程用 `@/` 别名，不写后缀。
-- ohmyswitch 的数据目录是 `~/.ohmyswitch`（`store.json`、`plugins.yml`、`plugins.patch.yml`、`cache/`），由 `core/paths.ts` 决定，GUI 和以后的 CLI/TUI 共用。Electron 的 userData 只放 Chromium 状态和单实例锁。
-- 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，它会同时隔离数据目录、userData 和单实例锁，不影响已安装的应用。
+- ohmyswitch 的文件按性质分目录，遵循各平台的约定，由 `core/paths.ts` 的 `appDirs` 决定，GUI 和以后的 CLI/TUI 共用。不在 home 下建点目录。
+
+  | 目录 | 内容 | Linux | macOS | Windows |
+  |---|---|---|---|---|
+  | config | `plugins.yml`、`plugins.patch.yml` | `$XDG_CONFIG_HOME/ohmyswitch` | `~/Library/Application Support/ohmyswitch` | `%APPDATA%\ohmyswitch` |
+  | data | `store.json` | `$XDG_DATA_HOME/ohmyswitch` | 同上 | `%APPDATA%\ohmyswitch` |
+  | cache | models.dev、图标，删掉会重新获取 | `$XDG_CACHE_HOME/ohmyswitch` | `~/Library/Caches/ohmyswitch` | `%LOCALAPPDATA%\ohmyswitch\Cache` |
+  | state | `electron/`（Electron 的 userData：Chromium 状态和单实例锁） | `$XDG_STATE_HOME/ohmyswitch` | `~/Library/Application Support/ohmyswitch` | `%LOCALAPPDATA%\ohmyswitch` |
+
+- 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，各类目录都放到它下面的 `config/`、`data/`、`cache/`、`state/` 中，同时隔离 userData 和单实例锁，不影响已安装的应用。
 
 ## 插件
 

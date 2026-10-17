@@ -1,14 +1,14 @@
 import { app } from 'electron';
 
-import { ohmyswitchHome, resolveDirOverride } from '#core/paths.ts';
+import { type AppDirs, appDirs } from '#core/paths.ts';
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export interface AppConfig {
   version: string;
-  /** ohmyswitch's own directory (`~/.ohmyswitch` or `OHMYSWITCH_HOME`): store.json, plugins.yml and cache/. */
-  dataDir: string;
+  /** Where ohmyswitch keeps its files, by kind. */
+  dirs: AppDirs;
   /** Built renderer files, served in production. */
   rendererDir: string;
   /** Vite dev server URL; set by electron-vite in development only. */
@@ -18,15 +18,15 @@ export interface AppConfig {
   env: Readonly<Record<string, string | undefined>>;
 }
 
+const dirs = () => appDirs(homedir(), process.env, process.platform);
+
 /**
- * Electron's userData holds only Chromium state and the single-instance lock; ohmyswitch's data lives in
- * `dataDir`. When OHMYSWITCH_HOME is set, userData moves under it too, so one variable isolates a development
- * instance completely from the installed app. Must run before anything touches userData.
+ * Electron's default userData is the app's config directory; it holds only Chromium state and the single-instance
+ * lock, so it moves to the state directory, out of the way of the files people edit. With OHMYSWITCH_HOME this
+ * isolates a development instance completely from the installed app. Must run before anything touches userData.
  */
-export function applyUserDataOverride() {
-  if (resolveDirOverride(homedir(), process.env.OHMYSWITCH_HOME)) {
-    app.setPath('userData', join(ohmyswitchHome(homedir(), process.env), 'electron'));
-  }
+export function applyUserDataPath() {
+  app.setPath('userData', join(dirs().state, 'electron'));
 }
 
 /** Read once at startup; `app.ts` hands each plugin its part, and plugins never read `process.env` directly. */
@@ -34,7 +34,7 @@ export function loadConfig(): AppConfig {
   const home = homedir();
   return {
     version: app.getVersion(),
-    dataDir: ohmyswitchHome(home, process.env),
+    dirs: dirs(),
     rendererDir: join(import.meta.dirname, '../renderer'),
     rendererDevUrl: app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL,
     home,

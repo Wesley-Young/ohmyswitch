@@ -5,7 +5,7 @@ import { FiberState } from '#core/cordis.ts';
 import { findLink, linkScheme } from '#core/deep-links/link.ts';
 import type { DeepLinkService } from '#core/deep-links/service.ts';
 import { App } from './app.ts';
-import { type AppConfig, applyUserDataOverride, loadConfig } from './config.ts';
+import { type AppConfig, applyUserDataPath, loadConfig } from './config.ts';
 import { logError, logExporter } from './logging.ts';
 import { registerAppScheme } from './plugins/protocol/scheme.ts';
 import type { WindowService } from './plugins/window/service.ts';
@@ -14,7 +14,7 @@ import type { WindowService } from './plugins/window/service.ts';
 // Everything else is a plugin.
 app.setName('ohmyswitch');
 if (process.platform === 'win32') app.setAppUserModelId('io.github.wesley-young.ohmyswitch');
-applyUserDataOverride();
+applyUserDataPath();
 registerAppScheme();
 
 /** The running app; disposed before quitting. */

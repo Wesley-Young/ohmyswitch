@@ -27,14 +27,14 @@ export const App = {
   name: 'ohmyswitch',
   apply(ctx: Context, config: AppConfig) {
     ctx.plugin(ElectronHttpService);
-    ctx.plugin(StoreService, { dataDir: config.dataDir });
-    ctx.plugin(ModelsDevService, { cachePath: join(config.dataDir, 'cache', 'models-dev.json') });
-    ctx.plugin(IconService, { cacheDir: join(config.dataDir, 'cache', 'icons') });
+    ctx.plugin(StoreService, { dataDir: config.dirs.data });
+    ctx.plugin(ModelsDevService, { cachePath: join(config.dirs.cache, 'models-dev.json') });
+    ctx.plugin(IconService, { cacheDir: join(config.dirs.cache, 'icons') });
     ctx.plugin(HarnessService, { home: config.home, env: config.env });
     ctx.plugin(Loader);
     ctx.plugin(PluginService, {
-      path: join(config.dataDir, 'plugins.yml'),
-      patchPath: join(config.dataDir, 'plugins.patch.yml'),
+      path: join(config.dirs.config, 'plugins.yml'),
+      patchPath: join(config.dirs.config, 'plugins.patch.yml'),
       builtins: [OpenCodeHarnessPlugin, PiHarnessPlugin, DshHarnessPlugin],
     });
     ctx.plugin(ProviderService);

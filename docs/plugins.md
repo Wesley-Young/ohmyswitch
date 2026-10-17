@@ -1,6 +1,6 @@
 # 插件配置
 
-ohmyswitch 的 Harness 都是内置插件，默认全部启用。启用哪些由数据目录（`~/.ohmyswitch`，设置了 `OHMYSWITCH_HOME` 时是它）中的两个文件决定，组合方式和 DeepSeek Harness profile 的 `cordis.yml`、`cordis.patch.yml` 相同：
+ohmyswitch 的 Harness 都是内置插件，默认全部启用。启用哪些由配置目录中的两个文件决定（Linux 是 `~/.config/ohmyswitch`，macOS 是 `~/Library/Application Support/ohmyswitch`，Windows 是 `%APPDATA%\ohmyswitch`；设置了 `OHMYSWITCH_HOME` 时是其中的 `config/`），组合方式和 DeepSeek Harness profile 的 `cordis.yml`、`cordis.patch.yml` 相同：
 
 | 文件 | 内容 | 谁来写 |
 |---|---|---|

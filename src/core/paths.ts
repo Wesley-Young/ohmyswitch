@@ -6,10 +6,54 @@ export function resolveDirOverride(home: string, value: string | undefined) {
   return expanded && isAbsolute(expanded) ? expanded : undefined;
 }
 
+/** Where ohmyswitch keeps each kind of file, shared by every front end (GUI now, CLI/TUI later). */
+export interface AppDirs {
+  /** Files users and agents edit: `plugins.yml`, `plugins.patch.yml`. */
+  config: string;
+  /** What ohmyswitch records: `store.json`. */
+  data: string;
+  /** Anything that can be fetched again; safe to delete. */
+  cache: string;
+  /** Runtime state that is neither: Electron's userData. */
+  state: string;
+}
+
+const name = 'ohmyswitch';
+
 /**
- * ohmyswitch's own directory, shared by every front end (GUI now, CLI/TUI later): `OHMYSWITCH_HOME` when set,
- * otherwise `~/.ohmyswitch`. It holds `store.json`, `plugins.yml` and `cache/`.
+ * Each platform's conventional directories: XDG on Linux, `~/Library` on macOS, `%APPDATA%` and `%LOCALAPPDATA%`
+ * on Windows. `OHMYSWITCH_HOME` puts all of them under one directory instead, to isolate a development instance.
  */
-export function ohmyswitchHome(home: string, env: Readonly<Record<string, string | undefined>>) {
-  return resolveDirOverride(home, env.OHMYSWITCH_HOME) ?? join(home, '.ohmyswitch');
+export function appDirs(home: string, env: Readonly<Record<string, string | undefined>>, platform: string): AppDirs {
+  const root = resolveDirOverride(home, env.OHMYSWITCH_HOME);
+  if (root) {
+    return {
+      config: join(root, 'config'),
+      data: join(root, 'data'),
+      cache: join(root, 'cache'),
+      state: join(root, 'state'),
+    };
+  }
+  if (platform === 'darwin') {
+    const support = join(home, 'Library', 'Application Support', name);
+    return {
+      config: support,
+      data: support,
+      cache: join(home, 'Library', 'Caches', name),
+      state: support,
+    };
+  }
+  if (platform === 'win32') {
+    const roaming = join(resolveDirOverride(home, env.APPDATA) ?? join(home, 'AppData', 'Roaming'), name);
+    const local = join(resolveDirOverride(home, env.LOCALAPPDATA) ?? join(home, 'AppData', 'Local'), name);
+    return { config: roaming, data: roaming, cache: join(local, 'Cache'), state: local };
+  }
+  const xdg = (variable: string, fallback: string) =>
+    join(resolveDirOverride(home, env[variable]) ?? join(home, fallback), name);
+  return {
+    config: xdg('XDG_CONFIG_HOME', '.config'),
+    data: xdg('XDG_DATA_HOME', join('.local', 'share')),
+    cache: xdg('XDG_CACHE_HOME', '.cache'),
+    state: xdg('XDG_STATE_HOME', join('.local', 'state')),
+  };
 }
