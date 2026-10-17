@@ -33,7 +33,7 @@ export const storedProvider = z.object({
   id: z.uuid(),
   name: providerName,
   accessPoints: z.array(accessPoint).min(1),
-  endpoints: z.array(z.enum(endpoints)),
+  endpoint: z.enum(endpoints),
   apiKey: z.string(),
   models: z.array(modelInfo),
   createdAt: z.iso.datetime(),

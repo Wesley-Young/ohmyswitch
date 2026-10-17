@@ -47,7 +47,7 @@
 - 只用系统字体，不打包字体文件。无衬线字体的顺序：Apple 系统字体 > Windows 系统字体 > 其他无衬线字体 > 其他字体；等宽字体的顺序：SF Mono > JetBrains Mono > 其他等宽字体。字体栈定义在 `styles.css` 的 `--font-sans` 和 `--font-mono` 中，组件不另设字体。
 - URL、路径、端点、版本号等机器可读的值用 `font-mono`。
 - Harness 和模型厂商的图标用 `@lobehub/icons` 的 Mono 版本（用 `currentColor` 绘制，跟随深浅色），按 `@lobehub/icons/es/<Name>/components/Mono.js` 深导入，不从包入口导入（入口会引入 antd）。通用图标用 lucide。
-- 页面由 `PageHeader`（标题、右侧主操作）和 `PageContent`（`max-w-5xl`）组成。列表放在细边框的 `rounded-lg` 容器里，行之间用 `divide-y` 分隔；空状态用 `Empty`；附加信息用 `Badge`，不用 `·` 拼接。
+- 页面由 `PageHeader`（标题、右侧主操作）和 `PageContent`（`max-w-5xl`）组成。侧边栏直达的是一级页面；从一级页面进入的是二级页面（如添加、编辑供应商），`PageHeader` 传 `backTo` 显示返回按钮，标题字号比一级页面小。列表放在细边框的 `rounded-lg` 容器里，行之间用 `divide-y` 分隔；空状态用 `Empty`；附加信息用 `Badge`，不用 `·` 拼接。
 - 每个页面最多一个主按钮（默认的黑底按钮），次要操作用 `outline` 或 `ghost`。
 - 添加和编辑在 `Dialog` 中进行；删除等不可恢复的操作用 `AlertDialog` 确认；操作结果用 sonner 简短提示。
 - 跟随系统的深浅色。窗口顶部是拖动区（`app-drag`），其中可交互的元素要加上 `app-no-drag`。

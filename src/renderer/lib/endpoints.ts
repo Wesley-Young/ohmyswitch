@@ -1,6 +1,6 @@
 import type { RouterOutputs } from './trpc';
 
-export type Endpoint = RouterOutputs['providers']['list'][number]['endpoints'][number];
+export type Endpoint = RouterOutputs['providers']['list'][number]['endpoint'];
 
 /** Protocol names shown for each endpoint; the key order is the display order. */
 export const endpointLabels = {

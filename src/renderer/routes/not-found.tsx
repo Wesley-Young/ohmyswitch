@@ -8,7 +8,7 @@ export default function NotFound() {
     <>
       <PageHeader title="页面不存在" />
       <PageContent>
-        <Button variant="outline" render={<Link to="/providers" />}>
+        <Button variant="outline" nativeButton={false} render={<Link to="/providers" />}>
           返回供应商
         </Button>
       </PageContent>

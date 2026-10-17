@@ -10,6 +10,8 @@ import { syncColorScheme } from '@/lib/theme';
 import { queryClient } from '@/lib/trpc';
 import Harnesses from '@/routes/harnesses';
 import NotFound from '@/routes/not-found';
+import ProviderEdit from '@/routes/provider-edit';
+import ProviderNew from '@/routes/provider-new';
 import Providers from '@/routes/providers';
 
 syncColorScheme();
@@ -25,6 +27,8 @@ createRoot(root).render(
           <Route element={<App />}>
             <Route index element={<Navigate to="/providers" replace />} />
             <Route path="providers" element={<Providers />} />
+            <Route path="providers/new" element={<ProviderNew />} />
+            <Route path="providers/:providerId" element={<ProviderEdit />} />
             <Route path="harnesses" element={<Harnesses />} />
             <Route path="*" element={<NotFound />} />
           </Route>

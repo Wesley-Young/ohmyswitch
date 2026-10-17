@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { KeyRound, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { KeyRound, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router';
 
-import { CreateProviderDialog } from '@/components/create-provider-dialog';
 import { DeleteProviderDialog } from '@/components/delete-provider-dialog';
 import { PageContent, PageHeader } from '@/components/page';
 import { Badge } from '@/components/ui/badge';
@@ -22,12 +22,11 @@ type Provider = RouterOutputs['providers']['list'][number];
 
 export default function Providers() {
   const providers = useQuery(trpc.providers.list.queryOptions());
-  const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Provider>();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const addButton = (
-    <Button onClick={() => setCreating(true)}>
+    <Button nativeButton={false} render={<Link to="/providers/new" />}>
       <Plus data-icon="inline-start" />
       添加供应商
     </Button>
@@ -71,7 +70,6 @@ export default function Providers() {
           </ul>
         )}
       </PageContent>
-      <CreateProviderDialog open={creating} onOpenChange={setCreating} />
       <DeleteProviderDialog provider={deleting} open={confirmOpen} onOpenChange={setConfirmOpen} />
     </>
   );
@@ -87,24 +85,39 @@ function ProviderRow({ provider, onDelete }: { provider: Provider; onDelete: () 
         <div className="truncate text-sm font-medium">{provider.name}</div>
         <div className="truncate font-mono text-xs text-muted-foreground">{provider.accessPoints[0]?.baseUrl}</div>
       </div>
-      <div className="hidden flex-wrap justify-end gap-1 md:flex">
-        {provider.endpoints.map((endpoint) => (
-          <Badge key={endpoint} variant="outline" className="font-normal text-muted-foreground">
-            {endpointLabels[endpoint]}
+      <div className="hidden shrink-0 gap-1 md:flex">
+        {provider.modelCount > 0 && (
+          <Badge variant="outline" className="font-normal text-muted-foreground">
+            {provider.modelCount} 个模型
           </Badge>
-        ))}
+        )}
+        <Badge variant="outline" className="font-normal text-muted-foreground">
+          {endpointLabels[provider.endpoint]}
+        </Badge>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="更多操作" />}>
-          <MoreHorizontal />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem variant="destructive" onClick={onDelete}>
-            <Trash2 />
-            删除
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="编辑"
+          title="编辑"
+          nativeButton={false}
+          render={<Link to={`/providers/${provider.id}`} />}
+        >
+          <Pencil />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="更多操作" />}>
+            <MoreHorizontal />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2 />
+              删除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </li>
   );
 }
