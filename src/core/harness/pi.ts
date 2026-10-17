@@ -12,6 +12,5 @@ export const pi: HarnessDescriptor = {
   name: 'Pi',
   homepage: 'https://pi.dev',
   homeDir,
-  configFiles: (environment) => [join(homeDir(environment), 'models.json')],
-  adapter: piAdapter,
+  configFiles: async (environment) => [{ path: join(homeDir(environment), 'models.json'), adapter: piAdapter }],
 };

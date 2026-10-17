@@ -18,7 +18,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { refreshProviders } from '@/lib/cache';
+import { type Endpoint, endpointLabels } from '@/lib/endpoints';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
 type Harness = RouterOutputs['harnesses']['list'][number];
@@ -34,7 +36,7 @@ const stateLabels = {
 const isConflict = (error: unknown) => error instanceof TRPCClientError && error.data?.code === 'CONFLICT';
 
 /** Where a provider is applied: one row per harness with a switch. Harnesses not installed are folded away. */
-export function HarnessApplications({ providerId }: { providerId: string }) {
+export function HarnessApplications({ providerId, endpoint }: { providerId: string; endpoint: Endpoint }) {
   // Harness configs can change outside ohmyswitch, so their state is always read fresh.
   const harnesses = useQuery(trpc.harnesses.list.queryOptions(undefined, { staleTime: 0 }));
   const applications = useQuery(trpc.harnesses.applications.queryOptions(undefined, { staleTime: 0 }));
@@ -97,11 +99,21 @@ export function HarnessApplications({ providerId }: { providerId: string }) {
 
   const row = (harness: Harness) => {
     const application = applied.find((item) => item.harnessId === harness.id);
-    const problem = application ? stateLabels[application.state] : '';
-    const canRewrite = application?.state === 'modified' || application?.state === 'missing';
+    const unsupported = harness.unsupportedEndpoints.includes(endpoint);
+    const unsupportedLabel = `不支持 ${endpointLabels[endpoint]}`;
+    // Not applied: the switch is simply unavailable, explained on hover. Applied before the endpoint changed: an error.
+    const unavailable = unsupported && !application;
+    const problem = unsupported
+      ? application
+        ? unsupportedLabel
+        : ''
+      : application
+        ? stateLabels[application.state]
+        : '';
+    const canRewrite = !unsupported && (application?.state === 'modified' || application?.state === 'missing');
     return (
       <li key={harness.id} className="flex items-center gap-3 px-4 py-3">
-        <HarnessIcon id={harness.id} />
+        <HarnessIcon id={harness.id} className={unavailable ? 'text-muted-foreground opacity-60' : undefined} />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">{harness.name}</div>
           <div className="truncate font-mono text-xs text-muted-foreground" title={harness.configPath}>
@@ -119,16 +131,26 @@ export function HarnessApplications({ providerId }: { providerId: string }) {
             重新写入
           </Button>
         )}
-        <Switch
-          aria-label={`应用到 ${harness.name}`}
-          checked={Boolean(application)}
-          disabled={pending || (!harness.detected && !application)}
-          onCheckedChange={(checked) =>
-            checked
-              ? apply.mutate({ providerId, harnessId: harness.id, replace: false })
-              : unapply.mutate({ providerId, harnessId: harness.id })
-          }
-        />
+        {unavailable ? (
+          <Tooltip>
+            {/* A disabled control gets no pointer events, so the tooltip hangs on a wrapper. */}
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Switch aria-label={`应用到 ${harness.name}`} checked={false} disabled />
+            </TooltipTrigger>
+            <TooltipContent>{unsupportedLabel}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Switch
+            aria-label={`应用到 ${harness.name}`}
+            checked={Boolean(application)}
+            disabled={pending || (!application && (!harness.detected || unsupported))}
+            onCheckedChange={(checked) =>
+              checked
+                ? apply.mutate({ providerId, harnessId: harness.id, replace: false })
+                : unapply.mutate({ providerId, harnessId: harness.id })
+            }
+          />
+        )}
       </li>
     );
   };

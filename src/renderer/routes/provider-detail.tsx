@@ -78,7 +78,7 @@ export default function ProviderDetail() {
             <h2 id="applications-title" className="text-sm font-medium">
               应用到
             </h2>
-            <HarnessApplications key={data.id} providerId={data.id} />
+            <HarnessApplications key={data.id} providerId={data.id} endpoint={data.endpoint} />
           </section>
           <ProviderModels key={data.id} providerId={data.id} providerName={data.name} models={data.models} />
         </div>

@@ -3,14 +3,14 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi。各自的位置、路径规则和读写逻辑在 `src/core/harness/` 中定义。列表里的 Harness 都能写入，尚未接入的不列出。DeepSeek Harness（简称 DSH，界面上就叫这个名字）暂未接入，路径规则注释保留在 `dsh.ts` 中。
+- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。各自的位置、路径规则和读写逻辑在 `src/core/harness/` 中定义。列表里的 Harness 都能写入，尚未接入的不列出。
 - 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。主进程使用 `@fraqjs/kernel` 插件和 tRPC；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。
 
 ## 目录与依赖方向
 
-- `src/core/`：与 Electron 无关的领域模型和纯逻辑，包括供应商 schema、Harness 描述、配置投影和原子写入。只依赖 Node 内置模块、zod 和 jsonc-parser（编辑带注释的 JSON 配置），Node 可以直接运行。
+- `src/core/`：与 Electron 无关的领域模型和纯逻辑，包括供应商 schema、Harness 描述、配置投影和原子写入。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）和 yaml（编辑带注释的 YAML 配置），Node 可以直接运行。
 - `src/main/`：主进程。`index.ts` 管理 Electron 生命周期，`app.ts` 装配插件，`plugins/` 按业务模块划分，`trpc/` 汇总路由。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
@@ -30,9 +30,9 @@
   - 只改 ohmyswitch 负责的条目，其他内容原样保留，能保留注释的格式就保留注释。
   - 使用原子写入。写入前比对文件内容，发现外部改动过就停下来重新读取。
   - 不写默认供应商和默认模型。
-  - 不读写 Harness 的登录凭据文件（如 Pi 的 `auth.json`）。
+  - 不碰 Harness 的登录凭据（如 Pi 的 `auth.json`、DSH 凭据文件中的 `records`）。Harness 只能从凭据库读取 API Key 时（如 DSH 的 `.credentials.yaml`），可以在其中增删 ohmyswitch 自己的 Key 条目，其他条目不读取其值、不修改。
   - 实现某个 Harness 之前，先在 `docs/harness/<id>.md` 写明它的原生配置契约（读写哪些文件和字段、明确不碰哪些）。契约以 Harness 的源码为准，注明核对的版本。
-  - 每个 Harness 的读写逻辑是 `core/harness/` 中的一个 `HarnessAdapter`（只做文本到文本的转换），文件访问、写前比对和记录在 `HarnessService` 中。保持实现与契约文档一致。
+  - Harness 写入哪些文件由它的 `HarnessDescriptor.configFiles` 决定（可以有多个，如 DSH 的每个 profile 和凭据文件）。每个文件的读写逻辑是 `core/harness/` 中的一个 `HarnessAdapter`（只做文本到文本的转换），文件读写、加锁、写前比对和记录在 `HarnessService` 中。Harness 自己写文件时有跨进程锁的，写入时使用同样的锁（`core/file-lock.ts`）。保持实现与契约文档一致。
 
 ## 渲染进程
 

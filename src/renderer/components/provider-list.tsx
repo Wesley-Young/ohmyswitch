@@ -88,8 +88,7 @@ function ProviderItem({ provider, applications }: { provider: Provider; applicat
 }
 
 /** The item's second line: a short status for the provider. */
-const statusOf = (provider: Provider) =>
-  provider.modelCount ? `${provider.modelCount} 个模型` : '尚未配置模型';
+const statusOf = (provider: Provider) => (provider.modelCount ? `${provider.modelCount} 个模型` : '尚未配置模型');
 
 function ListSkeleton() {
   return (
