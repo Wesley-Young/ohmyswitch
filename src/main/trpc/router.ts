@@ -10,7 +10,7 @@ import { harnessRoutes } from './routes/harnesses.ts';
 import { iconRoutes } from './routes/icons.ts';
 import { providerRoutes } from './routes/providers.ts';
 
-/** The services behind the routes; the protocol plugin passes its context, which injects them. */
+/** The services behind the routes; the protocol plugin, which injects them, passes them in. */
 export interface RouterServices {
   providers: ProviderService;
   harnesses: HarnessService;

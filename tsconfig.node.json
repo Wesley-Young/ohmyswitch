@@ -2,8 +2,10 @@
   "compilerOptions": {
     "target": "ES2024",
     "lib": ["ES2024"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    // cordis publishes declarations with extensionless relative imports, which NodeNext cannot resolve. The main
+    // process is bundled by electron-vite, so bundler resolution matches how it runs.
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
     "types": ["node", "electron-vite/node"],
     "noEmit": true,
     "allowImportingTsExtensions": true,

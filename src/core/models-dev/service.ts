@@ -1,10 +1,10 @@
-import { type Logger, serviceToken } from '@fraqjs/kernel';
+import { type Context, type Logger, Service } from 'cordis';
 import { z } from 'zod';
 
 import { writeFileAtomic } from '../atomic-file.ts';
 import { AppError } from '../errors.ts';
 import { readLimitedText } from '../http/fetch.ts';
-import type { HttpService } from '../http/service.ts';
+import type {} from '../http/service.ts';
 import { catalogEntry, ModelsDevIndex, modelsDevUrl, parseModelsDev } from './catalog.ts';
 
 import { readFile } from 'node:fs/promises';
@@ -19,10 +19,18 @@ const cacheFile = z.object({
   entries: z.array(catalogEntry),
 });
 
-export interface ModelsDevDeps {
-  http: HttpService;
-  logger: Logger;
+declare module 'cordis' {
+  interface Context {
+    modelsDev: ModelsDevService;
+  }
 }
+
+export const modelsDevOptions = z.object({
+  /** Where the reduced catalog is cached between runs. */
+  cachePath: z.string(),
+});
+
+export type ModelsDevOptions = z.infer<typeof modelsDevOptions>;
 
 interface Snapshot {
   fetchedAt: number;
@@ -33,17 +41,19 @@ interface Snapshot {
  * The models.dev catalog, reduced and cached on disk for a day. When a refresh fails, a stale copy is used;
  * only a failure with no copy at all is an error.
  */
-export class ModelsDevService {
-  static readonly token = serviceToken<ModelsDevService>('ohmyswitch/models-dev');
-  private readonly deps: ModelsDevDeps;
+export class ModelsDevService extends Service {
+  static readonly inject = ['http'];
+  static readonly Config = modelsDevOptions;
+  private readonly logger: Logger;
   private readonly path: string;
   private snapshot: Snapshot | undefined;
   private loadedFromDisk = false;
   private pending: Promise<ModelsDevIndex> | undefined;
 
-  constructor(deps: ModelsDevDeps, path: string) {
-    this.deps = deps;
-    this.path = path;
+  constructor(ctx: Context, options: ModelsDevOptions) {
+    super(ctx, 'modelsDev');
+    this.logger = ctx.logger('models-dev');
+    this.path = options.cachePath;
   }
 
   index(): Promise<ModelsDevIndex> {
@@ -65,12 +75,12 @@ export class ModelsDevService {
       this.snapshot = { fetchedAt: fetchedAt.getTime(), index: new ModelsDevIndex(entries) };
       const file: z.infer<typeof cacheFile> = { version: 2, fetchedAt: fetchedAt.toISOString(), entries };
       await writeFileAtomic(this.path, JSON.stringify(file)).catch((error: unknown) =>
-        this.deps.logger.warn('Failed to write models.dev cache', error),
+        this.logger.warn('Failed to write models.dev cache', error),
       );
       return this.snapshot.index;
     } catch (error) {
       if (this.snapshot) {
-        this.deps.logger.warn('Failed to refresh models.dev, using the cached copy', error);
+        this.logger.warn('Failed to refresh models.dev, using the cached copy', error);
         return this.snapshot.index;
       }
       throw error;
@@ -81,7 +91,7 @@ export class ModelsDevService {
     const signal = AbortSignal.timeout(30_000);
     let text: string;
     try {
-      const response = await this.deps.http.fetch(modelsDevUrl, { headers: { accept: 'application/json' }, signal });
+      const response = await this.ctx.http.fetch(modelsDevUrl, { headers: { accept: 'application/json' }, signal });
       if (!response.ok) {
         await response.body?.cancel().catch(() => {});
         throw new Error(`HTTP ${response.status}`);

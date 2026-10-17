@@ -172,9 +172,6 @@ importers:
       '@biomejs/biome':
         specifier: ^2.5.15
         version: 2.5.15
-      '@fraqjs/kernel':
-        specifier: ^1.1.1
-        version: 1.1.1
       '@lobehub/icons':
         specifier: 5.23.1
         version: 5.23.1(@lobehub/ui@5.64.4)(@types/react@19.3.0)(antd@6.6.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)
@@ -211,6 +208,9 @@ importers:
       cn:
         specifier: ^0.4.0
         version: 0.4.0
+      cordis:
+        specifier: 4.0.0-rc.11
+        version: 4.0.0-rc.11(@cordisjs/plugin-include@1.1.1)(@cordisjs/plugin-loader@1.0.0-rc.8)
       electron:
         specifier: ^44.7.2
         version: 44.7.2(supports-color@7.2.0)
@@ -550,6 +550,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@cordisjs/plugin-include@1.1.1':
+    resolution: {integrity: sha512-RoO2cx6UiGa0GKBgIChWuq1cekabbxg2DdNhXdcUmixhzODVisxgxNTSBZIHXLEegqpVdIwGqlyiGTtvZ+3ZWQ==}
+    peerDependencies:
+      '@cordisjs/plugin-loader': ^1.0.0-rc.8
+      cordis: ^4.0.0-rc.11
+
+  '@cordisjs/plugin-loader@1.0.0-rc.8':
+    resolution: {integrity: sha512-KK/tN3OjkK0VJjL1aEQCVK2e2+pqW1F3KHtU5XPZbzZ99HN/kz3yHNTTxSjOGn33WjnL9wdMPHHXQfuHzVeG/A==}
+    peerDependencies:
+      cordis: ^4.0.0-rc.11
+      node-addon-require-builtin: ^0.1.0
+    peerDependenciesMeta:
+      node-addon-require-builtin:
+        optional: true
+
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
     peerDependencies:
@@ -711,10 +726,6 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
-
-  '@fraqjs/kernel@1.1.1':
-    resolution: {integrity: sha512-HGnFL33X2sbD6iH/qvzQGdgfOkHvHVZBunjXWNb18CWfkF1kBTPjRoBGx2YNqIg4s87L4jzEpe+q2JswH2GY3Q==}
-    engines: {node: '>=22'}
 
   '@giscus/react@3.1.0':
     resolution: {integrity: sha512-0TCO2TvL43+oOdyVVGHDItwxD1UMKP2ZYpT6gXmhFOqfAJtZxTzJ9hkn34iAF/b6YzyJ4Um89QIt9z/ajmAEeg==}
@@ -1570,6 +1581,9 @@ packages:
   '@splinetool/runtime@1.12.98':
     resolution: {integrity: sha512-UWZH/+4XtNgMMgmDiWhZS55WOwUDGuTj4uH6fiZV6Jol3d3v3z1RRBObspx8GMio0HajOYGg7FJ8TZdyBdpW4A==}
 
+  '@standard-schema/spec@1.1.0':
+    resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
   '@stitches/react@1.2.8':
     resolution: {integrity: sha512-9g9dWI4gsSVe8bNLlb+lMkBYsnIKCZTmvqvDG+Avnn69XfmHZKiaMrx7cgTaddq7aTPPmXiTsbFcUy0xgI4+wA==}
     peerDependencies:
@@ -2335,6 +2349,18 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
+  cordis@4.0.0-rc.11:
+    resolution: {integrity: sha512-03PHbcYJzp84XRKnW7jd17g26bPvG5UvSyhyjxGIu/1VQs3bweNMACo3t1W0ikzoZ7q+wytHyk8jJsaIQOkPkA==}
+    hasBin: true
+    peerDependencies:
+      '@cordisjs/plugin-include': ^1.1.1
+      '@cordisjs/plugin-loader': ^1.0.0-rc.8
+    peerDependenciesMeta:
+      '@cordisjs/plugin-include':
+        optional: true
+      '@cordisjs/plugin-loader':
+        optional: true
+
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
@@ -2345,6 +2371,9 @@ packages:
   cosmiconfig@7.1.0:
     resolution: {integrity: sha512-AdmX6xUzdNASswsFtmwSt7Vj8po9IuqXm0UXz7QKPuEUmPB4XyjGfaAr2PSuELMwkRMVH1EpIkX5bTZGRB3eCA==}
     engines: {node: '>=10'}
+
+  cosmokit@1.8.1:
+    resolution: {integrity: sha512-PDBv4l90xZKrUsZ0vtoycgZpO/j4iFsqJXrAxsyBDsnQRI7ZMJXIjgDJsKNjd5L8jnVnnlrDCdhkFbTncgCVjQ==}
 
   cross-dirname@0.1.0:
     resolution: {integrity: sha512-+R08/oI0nl3vfPcqftZRpytksBXDzOUveBq/NBVx0sUp1axwzPQrKinNx5yd5sxPu8j1wIy8AfnVQ+5eFdha6Q==}
@@ -3773,9 +3802,6 @@ packages:
   minizlib@3.1.0:
     resolution: {integrity: sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==}
     engines: {node: '>= 18'}
-
-  mitt@3.0.1:
-    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
 
   mixin-deep@1.3.2:
     resolution: {integrity: sha512-WRoDn//mXBiJ1H40rqa3vH0toePwSsGb45iInWlTySa+Uu4k3tYUSxa2v1KqAiLtvlrSzaExqS1gtk96A9zvEA==}
@@ -5381,6 +5407,20 @@ snapshots:
   '@biomejs/cli-win32-x64@2.5.15':
     optional: true
 
+  '@cordisjs/plugin-include@1.1.1(@cordisjs/plugin-loader@1.0.0-rc.8)(cordis@4.0.0-rc.11)':
+    dependencies:
+      '@cordisjs/plugin-loader': 1.0.0-rc.8(cordis@4.0.0-rc.11)
+      cordis: 4.0.0-rc.11(@cordisjs/plugin-include@1.1.1)(@cordisjs/plugin-loader@1.0.0-rc.8)
+      cosmokit: 1.8.1
+      js-yaml: 4.3.2
+    optional: true
+
+  '@cordisjs/plugin-loader@1.0.0-rc.8(cordis@4.0.0-rc.11)':
+    dependencies:
+      cordis: 4.0.0-rc.11(@cordisjs/plugin-include@1.1.1)(@cordisjs/plugin-loader@1.0.0-rc.8)
+      cosmokit: 1.8.1
+    optional: true
+
   '@dnd-kit/accessibility@3.1.1(react@19.3.1)':
     dependencies:
       react: 19.3.1
@@ -5641,10 +5681,6 @@ snapshots:
       tabbable: 6.5.0
 
   '@floating-ui/utils@0.2.12': {}
-
-  '@fraqjs/kernel@1.1.1':
-    dependencies:
-      mitt: 3.0.1
 
   '@giscus/react@3.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
@@ -6670,6 +6706,8 @@ snapshots:
       on-change: 4.0.0
       semver-compare: 1.0.0
 
+  '@standard-schema/spec@1.1.0': {}
+
   '@stitches/react@1.2.8(react@19.3.1)':
     dependencies:
       react: 19.3.1
@@ -7386,6 +7424,14 @@ snapshots:
 
   cookie@0.7.2: {}
 
+  cordis@4.0.0-rc.11(@cordisjs/plugin-include@1.1.1)(@cordisjs/plugin-loader@1.0.0-rc.8):
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      cosmokit: 1.8.1
+    optionalDependencies:
+      '@cordisjs/plugin-include': 1.1.1(@cordisjs/plugin-loader@1.0.0-rc.8)(cordis@4.0.0-rc.11)
+      '@cordisjs/plugin-loader': 1.0.0-rc.8(cordis@4.0.0-rc.11)
+
   core-util-is@1.0.3: {}
 
   cors@2.8.6:
@@ -7400,6 +7446,8 @@ snapshots:
       parse-json: 5.2.0
       path-type: 4.0.0
       yaml: 1.10.3
+
+  cosmokit@1.8.1: {}
 
   cross-dirname@0.1.0:
     optional: true
@@ -9178,8 +9226,6 @@ snapshots:
   minizlib@3.1.0:
     dependencies:
       minipass: 7.1.3
-
-  mitt@3.0.1: {}
 
   mixin-deep@1.3.2:
     dependencies:

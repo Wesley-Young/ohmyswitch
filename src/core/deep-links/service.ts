@@ -1,14 +1,15 @@
-import { type Logger, serviceToken } from '@fraqjs/kernel';
+import { type Context, type Logger, Service } from 'cordis';
 
-import type { StoreService } from '../store/service.ts';
+import type {} from '../store/service.ts';
 import { findMatch, type ImportDraft, parseLink } from './link.ts';
 
 import { randomUUID } from 'node:crypto';
 import { EventEmitter, on } from 'node:events';
 
-export interface DeepLinkDeps {
-  store: StoreService;
-  logger: Logger;
+declare module 'cordis' {
+  interface Context {
+    deepLinks: DeepLinkService;
+  }
 }
 
 /** Something a front end should react to: an import is waiting, or a link could not be understood. */
@@ -27,21 +28,22 @@ interface PendingImport {
  * until the user saves or cancels it; nothing is saved or fetched before that. Links carry API keys, so their
  * content is never logged.
  */
-export class DeepLinkService {
-  static readonly token = serviceToken<DeepLinkService>('ohmyswitch/deep-links');
-  private readonly deps: DeepLinkDeps;
+export class DeepLinkService extends Service {
+  static readonly inject = ['store'];
+  private readonly logger: Logger;
   private readonly emitter = new EventEmitter();
   private current: PendingImport | undefined;
 
-  constructor(deps: DeepLinkDeps) {
-    this.deps = deps;
+  constructor(ctx: Context) {
+    super(ctx, 'deepLinks');
+    this.logger = ctx.logger('deep-links');
   }
 
   open(link: string) {
     const parsed = parseLink(link);
     const id = randomUUID();
     if (parsed.kind === 'unsupported') {
-      this.deps.logger.info('Ignored an unsupported link');
+      this.logger.info('Ignored an unsupported link');
       this.emit({ id, type: 'unsupported' });
       return;
     }
@@ -52,7 +54,7 @@ export class DeepLinkService {
   /** The import waiting for review, with the provider it would update by default. */
   pending() {
     if (!this.current) return null;
-    const match = findMatch(this.deps.store.data.providers, this.current.draft);
+    const match = findMatch(this.ctx.store.data.providers, this.current.draft);
     return {
       id: this.current.id,
       draft: this.current.draft,

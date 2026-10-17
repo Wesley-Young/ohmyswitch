@@ -1,5 +1,5 @@
-import type { Logger } from '@fraqjs/kernel';
 import { initTRPC, type TRPC_ERROR_CODE_KEY, TRPCError } from '@trpc/server';
+import type { Logger } from 'cordis';
 import { z } from 'zod';
 
 import { AppError, type AppErrorKind } from '../../core/errors.ts';

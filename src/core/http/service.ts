@@ -1,13 +1,21 @@
-import { serviceToken } from '@fraqjs/kernel';
+import { type Context, Service } from 'cordis';
 
 import type { Fetch } from './fetch.ts';
 
-/** Outgoing HTTP for business services. The plugin that provides it decides which network stack is used. */
-export class HttpService {
-  static readonly token = serviceToken<HttpService>('ohmyswitch/http');
-  readonly fetch: Fetch;
+declare module 'cordis' {
+  interface Context {
+    http: HttpService;
+  }
+}
 
-  constructor(fetch: Fetch) {
-    this.fetch = fetch;
+/**
+ * Outgoing HTTP for business services, registered as `ctx.http`. Core only defines it; the plugin that subclasses
+ * it decides which network stack is used.
+ */
+export abstract class HttpService extends Service {
+  abstract readonly fetch: Fetch;
+
+  constructor(ctx: Context) {
+    super(ctx, 'http');
   }
 }

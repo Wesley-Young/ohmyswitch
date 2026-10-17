@@ -1,47 +1,45 @@
-import { type Logger, serviceToken } from '@fraqjs/kernel';
+import { type Context, type Logger, Service } from 'cordis';
 
 import { AppError } from '../errors.ts';
-import type { HarnessService } from '../harnesses/service.ts';
-import type { HttpService } from '../http/service.ts';
-import type { IconService } from '../icons/service.ts';
-import type { ModelsDevService } from '../models-dev/service.ts';
+import type {} from '../harnesses/service.ts';
+import type {} from '../http/service.ts';
+import type {} from '../icons/service.ts';
+import type {} from '../models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '../provider.ts';
-import type { StoreService } from '../store/service.ts';
+import type {} from '../store/service.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
 import type { CreateProviderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
 
-export interface ProviderDeps {
-  store: StoreService;
-  harnesses: HarnessService;
-  http: HttpService;
-  modelsDev: ModelsDevService;
-  icons: IconService;
-  logger: Logger;
+declare module 'cordis' {
+  interface Context {
+    providers: ProviderService;
+  }
 }
 
-export class ProviderService {
-  static readonly token = serviceToken<ProviderService>('ohmyswitch/providers');
-  private readonly deps: ProviderDeps;
+export class ProviderService extends Service {
+  static readonly inject = ['store', 'harnesses', 'http', 'modelsDev', 'icons'];
+  private readonly logger: Logger;
 
-  constructor(deps: ProviderDeps) {
-    this.deps = deps;
+  constructor(ctx: Context) {
+    super(ctx, 'providers');
+    this.logger = ctx.logger('providers');
   }
 
   list() {
-    return this.deps.store.data.providers.map((provider) => this.summary(provider));
+    return this.ctx.store.data.providers.map((provider) => this.summary(provider));
   }
 
   /** The detail view of a provider, with its models. */
   get(providerId: string) {
-    const provider = this.find(this.deps.store.data.providers, providerId);
+    const provider = this.find(this.ctx.store.data.providers, providerId);
     return { ...this.summary(provider), models: provider.models };
   }
 
   /** The connection fields for the editor, the only place the API key is returned. */
   connection(providerId: string) {
-    const { name, baseUrl, apiKey, endpoint, iconUrl } = this.find(this.deps.store.data.providers, providerId);
+    const { name, baseUrl, apiKey, endpoint, iconUrl } = this.find(this.ctx.store.data.providers, providerId);
     return { name, baseUrl, apiKey, endpoint, iconUrl: iconUrl ?? '' };
   }
 
@@ -51,13 +49,13 @@ export class ProviderService {
    * request; it is reported alongside.
    */
   async fetchModels(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
-    const provider = this.find(this.deps.store.data.providers, providerId);
-    const { models } = await fetchModelCatalog(provider, this.deps.http.fetch, AbortSignal.timeout(20_000));
+    const provider = this.find(this.ctx.store.data.providers, providerId);
+    const { models } = await fetchModelCatalog(provider, this.ctx.http.fetch, AbortSignal.timeout(20_000));
     try {
-      const index = await this.deps.modelsDev.index();
+      const index = await this.ctx.modelsDev.index();
       return { models: models.map((model) => index.enrich(model)) };
     } catch (error) {
-      this.deps.logger.warn('Failed to load models.dev', error);
+      this.logger.warn('Failed to load models.dev', error);
       return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
     }
   }
@@ -74,7 +72,7 @@ export class ProviderService {
    * the fill after fetching, this is an explicit request, so models.dev failing is an error.
    */
   async syncModels(providerId: string) {
-    const index = await this.deps.modelsDev.index();
+    const index = await this.ctx.modelsDev.index();
     let unmatched = 0;
     const result = await this.save(providerId, (provider) => {
       const results = provider.models.map((model) => index.sync(model));
@@ -112,7 +110,7 @@ export class ProviderService {
       harnesses: {},
       createdAt: new Date().toISOString(),
     };
-    await this.deps.store.update((draft) => {
+    await this.ctx.store.update((draft) => {
       if (draft.providers.some((item) => item.name === provider.name)) {
         throw new AppError('conflict', `已有名为「${provider.name}」的供应商`);
       }
@@ -123,23 +121,23 @@ export class ProviderService {
 
   /** Delete the provider, removing it from every harness it is applied to first. */
   async delete(providerId: string) {
-    await this.deps.harnesses.removeProvider(this.find(this.deps.store.data.providers, providerId));
-    await this.deps.store.update((draft) => {
+    await this.ctx.harnesses.removeProvider(this.find(this.ctx.store.data.providers, providerId));
+    await this.ctx.store.update((draft) => {
       const index = draft.providers.findIndex((item) => item.id === providerId);
       if (index < 0) throw new AppError('not_found', '供应商不存在或已删除');
       draft.providers.splice(index, 1);
     });
-    await this.deps.icons.forget(providerId);
+    await this.ctx.icons.forget(providerId);
   }
 
   /** Models from their ids, with metadata from models.dev where it is available; without it, ids alone. */
   private async initialModels(ids: string[]): Promise<ModelInfo[]> {
     const models = ids.map((id) => ({ id }));
     try {
-      const index = await this.deps.modelsDev.index();
+      const index = await this.ctx.modelsDev.index();
       return models.map((model) => index.enrich(model));
     } catch (error) {
-      this.deps.logger.warn('Failed to load models.dev', error);
+      this.logger.warn('Failed to load models.dev', error);
       return models;
     }
   }
@@ -152,12 +150,12 @@ export class ProviderService {
     providerId: string,
     change: (provider: StoredProvider, providers: readonly StoredProvider[]) => void,
   ) {
-    const saved = await this.deps.store.update((draft) => {
+    const saved = await this.ctx.store.update((draft) => {
       const provider = this.find(draft.providers, providerId);
       change(provider, draft.providers);
       return provider;
     });
-    const harnessFailures = await this.deps.harnesses.syncProvider(saved);
+    const harnessFailures = await this.ctx.harnesses.syncProvider(saved);
     return { ...this.summary(saved), harnessFailures };
   }
 
@@ -172,7 +170,7 @@ export class ProviderService {
       baseUrl: provider.baseUrl,
       endpoint: provider.endpoint,
       modelCount: provider.models.length,
-      harnesses: this.deps.harnesses.appliedTo(provider),
+      harnesses: this.ctx.harnesses.appliedTo(provider),
       createdAt: provider.createdAt,
     };
   }

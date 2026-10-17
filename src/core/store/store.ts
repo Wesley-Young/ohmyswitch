@@ -75,4 +75,9 @@ export class Store {
     this.queue = run.catch(() => {});
     return run;
   }
+
+  /** Resolves once the updates started so far have finished, successfully or not. */
+  idle(): Promise<void> {
+    return this.queue.then(() => {});
+  }
 }

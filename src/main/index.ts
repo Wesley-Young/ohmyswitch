@@ -1,13 +1,14 @@
+import { Context, type Fiber } from 'cordis';
 import { app, dialog } from 'electron';
 
+import { FiberState } from '../core/cordis.ts';
 import { findLink, linkScheme } from '../core/deep-links/link.ts';
-import { DeepLinkService } from '../core/deep-links/service.ts';
-import type { AppContext } from '../core/kernel.ts';
-import { createApp } from './app.ts';
-import { applyUserDataOverride, loadConfig } from './config.ts';
-import { globalLogger } from './logging.ts';
+import type { DeepLinkService } from '../core/deep-links/service.ts';
+import { App } from './app.ts';
+import { type AppConfig, applyUserDataOverride, loadConfig } from './config.ts';
+import { logError, logExporter } from './logging.ts';
 import { registerAppScheme } from './plugins/protocol/scheme.ts';
-import { WindowService } from './plugins/window/service.ts';
+import type { WindowService } from './plugins/window/service.ts';
 
 // Process-level lifecycle only: the single-instance lock, startup, shutdown and receiving `ohmyswitch://` links.
 // Everything else is a plugin.
@@ -16,38 +17,60 @@ if (process.platform === 'win32') app.setAppUserModelId('io.github.wesley-young.
 applyUserDataOverride();
 registerAppScheme();
 
-let ctx: AppContext | undefined;
-let stopping = false;
+/** The running app; disposed before quitting. */
+let main: Fiber | undefined;
+/** The services the process hands windows and links to, while they are available. */
+let shell: { deepLinks: DeepLinkService; window: WindowService } | undefined;
 /** Links that arrive before startup finishes (macOS delivers the launching link this early). */
 const queuedLinks: string[] = [];
 
-/** Before startup finishes there is nothing to show; the window plugin opens the window when it starts. */
+/** Before startup finishes there is nothing to show; the window service opens the window when it loads. */
 function showWindow() {
-  if (ctx?.state === 'started') ctx.resolve(WindowService).show();
+  shell?.window.show();
 }
 
 function openLink(link: string) {
-  if (ctx?.state !== 'started') {
+  if (!shell) {
     queuedLinks.push(link);
     return;
   }
-  ctx.resolve(DeepLinkService).open(link);
-  showWindow();
+  shell.deepLinks.open(link);
+  shell.window.show();
 }
 
+/** Startup cannot continue. */
+function fail(error: unknown) {
+  dialog.showErrorBox('ohmyswitch 启动失败', error instanceof Error ? error.message : String(error));
+  app.exit(1);
+}
+
+/** The app and what the process needs from it, as one plugin so that one dispose stops everything. */
+const Main = {
+  name: 'main',
+  apply(ctx: Context, config: AppConfig) {
+    // Without a plugin, everything that depends on it waits forever, so its failure ends startup.
+    // `await()` rethrows the fiber's error, the only public way to read it.
+    ctx.on('internal/status', (fiber) => {
+      if (fiber.state === FiberState.FAILED) fiber.await().catch(fail);
+    });
+    ctx.plugin(App, config);
+    ctx.inject(['deepLinks', 'window'], (ctx) => {
+      shell = { deepLinks: ctx.deepLinks, window: ctx.window };
+      for (const link of queuedLinks.splice(0)) openLink(link);
+      return () => {
+        shell = undefined;
+      };
+    });
+  },
+};
+
 async function start() {
+  const config = loadConfig();
   await app.whenReady();
-  try {
-    ctx = createApp(loadConfig());
-    await ctx.start();
-  } catch (error) {
-    globalLogger.error('Startup failed', error);
-    dialog.showErrorBox('ohmyswitch 启动失败', error instanceof Error ? error.message : String(error));
-    app.exit(1);
-    return;
-  }
+  const root = new Context();
+  root.logger.exporter(logExporter);
+  main = root.plugin(Main, config);
   app.on('activate', showWindow);
-  for (const link of queuedLinks.splice(0)) openLink(link);
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -55,33 +78,42 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   // Only the packaged app registers, so a development build does not take links from the installed one.
   if (app.isPackaged) app.setAsDefaultProtocolClient(linkScheme);
+
   // macOS hands links to the running app; Windows and Linux start a second instance with the link in argv.
   app.on('open-url', (event, link) => {
     event.preventDefault();
     openLink(link);
   });
+
   app.on('second-instance', (_event, argv) => {
     const link = findLink(argv);
     if (link) openLink(link);
     else showWindow();
   });
+
   const launchLink = findLink(process.argv);
   if (launchLink) openLink(launchLink);
+
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });
-  // Stop the kernel before quitting so in-flight writes finish and services are disposed.
+
+  // Dispose the app before quitting. Dependents unload before the services they use, so in-flight writes finish
+  // first.
   app.on('before-quit', (event) => {
-    if (!ctx || stopping) return;
+    if (!main) return;
     event.preventDefault();
-    stopping = true;
-    ctx
-      .stop()
-      .catch((error: unknown) => globalLogger.error('Shutdown failed', error))
-      .finally(() => {
-        ctx = undefined;
-        app.quit();
-      });
+    const fiber = main;
+    main = undefined;
+    fiber
+      .dispose()
+      .catch((error: unknown) => logError('Shutdown failed', error))
+      .finally(() => app.quit());
   });
-  void start();
+
+  // Plugin failures are logged by cordis; anything else that stops startup is logged here.
+  start().catch((error: unknown) => {
+    logError('Startup failed', error);
+    fail(error);
+  });
 }

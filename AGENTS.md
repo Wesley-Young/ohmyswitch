@@ -3,17 +3,17 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑，在 `apply` 中把自己的 `HarnessDescriptor` 注册到 `HarnessService`。只有注册了的 Harness 才列出，都能写入，顺序就是 `app.ts` 中的安装顺序。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、在 `app.ts` 中安装，`HarnessService` 不用改。未注册的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
-- 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。业务逻辑组织成 `@fraqjs/kernel` 插件，主进程用 tRPC 提供给界面；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
+- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑；`index.ts` 用 `harnessPlugin(descriptor)` 导出插件，插件加载时把 `HarnessDescriptor` 注册到 `HarnessService`。只有注册了的 Harness 才列出，都能写入，顺序就是 `app.ts` 中的安装顺序。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、在 `app.ts` 中安装，`HarnessService` 不用改。未注册的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
+- 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。业务逻辑组织成 cordis 插件（`cordis`，锁定精确版本），主进程用 tRPC 提供给界面；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。
 
 ## 目录与依赖方向
 
-- `src/core/`：与 Electron 无关的部分，GUI 和以后的 CLI/TUI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）和 `@fraqjs/kernel`。
-  - 顶层文件是共享的纯逻辑：供应商 schema、错误、路径、原子写入、文件锁等。`kernel.ts` 定义上下文和 `definePlugin`。
+- `src/core/`：与 Electron 无关的部分，GUI 和以后的 CLI/TUI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）和 cordis。
+  - 顶层文件是共享的纯逻辑：供应商 schema、错误、路径、原子写入、文件锁等。`cordis.ts` 放 cordis 的辅助定义（如 `FiberState` 的取值）。
   - 每个子目录是一个插件模块：`store`、`http`（只定义服务）、`models-dev`、`icons`（供应商图标的查找和缓存）、`providers`、`deep-links`（`ohmyswitch://` 导入链接，契约见 `docs/deep-link.md`）、`harnesses`（注册表和写入流程）、`harness-<id>`（每个 Harness 一个）。
-  - 只有 `kernel.ts` 和模块的 `index.ts`、`service.ts` 依赖内核，其余文件都是纯逻辑。core 不依赖 Electron 和 tRPC。由 Biome 检查。
+  - 只有模块的 `index.ts`、`service.ts` 依赖 cordis，其余文件都是纯逻辑。core 不依赖 Electron 和 tRPC。由 Biome 检查。
 - `src/main/`：Electron 主进程，只做组装和 Electron 专用的部分。`index.ts` 只管进程级生命周期（单实例锁、启动、退出、接收 `ohmyswitch://` 链接）；`app.ts` 把 core 的插件和 `plugins/` 中的插件组装起来，是唯一的组装入口；`plugins/` 只放 Electron 专用插件（`http`、`protocol`、`window`）；`trpc/` 是 RPC 层，`routes/` 下每个模块一个文件，由 `router.ts` 汇总。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
@@ -23,11 +23,17 @@
 
 ## 插件
 
-- 模块 `core/<name>/` 的文件分工：`index.ts` 装配插件，显式声明 `inject` 和 `provides`；`service.ts` 是主 service，命名为 `XxxService`；`schemas.ts` 是 service 的输入校验，RPC 和以后的 CLI 共用；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
-- service 的构造函数第一个参数是依赖接口 `XxxDeps`（其他 service 和 `logger`），`index.ts` 直接传入插件的 `ctx`，因此 `XxxDeps` 和 `inject` 保持一致；插件参数等其他输入放在后面的参数中。service 不依赖内核类型。
-- 有状态的服务以实例注册。插件的 `apply` 只创建并注册服务；对外的副作用（开始处理 `app://` 请求、打开窗口）放在 `start` 钩子里，执行顺序由 `inject` 决定，不在 `index.ts` 中手动安排。插件没有 stop 钩子，需要释放的资源在 service 的 `dispose()` 中释放。
-- 配置在启动时由 `loadConfig()` 读取一次，`app.ts` 在 `install` 时把每个插件需要的部分作为插件参数传入（插件导出 `XxxOptions`）。插件不读全局配置，也不直接读 `process.env`。
-- 需要 Electron 的能力在 core 中定义服务，由 `main/plugins` 中的插件提供：网络请求注入 `HttpService`（`core/http`），main 用会走系统代理的 `net.fetch` 提供它；以后的 CLI 换一个实现即可。
+- 插件框架是 cordis。npm 包只带编译产物，行为以 cordiverse/cordis 中对应版本的源码为准：服务按名字注册在 `ctx` 上，`inject` 声明的服务都就绪后插件才加载，依赖的服务消失时插件跟着卸载；卸载时依赖方先于被依赖的服务清理。
+- 模块 `core/<name>/` 的文件分工：`service.ts` 是主 service，命名为 `XxxService`，继承 cordis 的 `Service`，它本身就是插件；`schemas.ts` 是 service 的输入校验，RPC 和以后的 CLI 共用；只有不是单个 service 的插件（如 Harness 插件）才需要 `index.ts`；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
+- service 的写法：
+  - 构造函数是 `(ctx, options)`，调用 `super(ctx, '<name>')` 注册为 `ctx.<name>`，并用 `declare module 'cordis' { interface Context { <name>: XxxService } }` 声明类型。
+  - 依赖写在 `static inject`，方法里通过 `this.ctx.<name>` 使用；core 的 service 依赖其他模块的服务时，按 `inject` 逐个 `import type {} from '../<module>/service.ts'`：界面的类型检查只沿导入链看到 core，缺了它们，推导出的返回类型会丢失。已经具名导入了 service 类型的文件（如 `main/trpc/router.ts` 和引用它的插件）不用再写。日志用构造函数里创建的 `ctx.logger('<name>')`。
+  - 插件参数用 zod 定义为 `static Config`，同时导出 `XxxOptions` 类型。
+  - 不用 `#private` 字段：cordis 通过 Proxy 访问 service，`#private` 在 Proxy 上不可用。
+- 加载时的异步准备、对外的副作用（处理 `app://` 请求、打开窗口）和资源释放写在 `[Service.init]()` 里：返回或 yield 的函数就是清理逻辑。执行顺序由 `inject` 决定，不手动安排。
+- 注册是 effect：service 提供给其他插件的注册方法（如 `HarnessService.register`）在 `this.ctx.effect()` 中登记并返回撤销函数，登记归属调用方的插件，它卸载时自动撤销。撤销时先停止接收新的操作，再等进行中的操作完成，然后才释放它们用到的资源。
+- 配置在启动时由 `loadConfig()` 读取一次，`app.ts` 在 `ctx.plugin()` 时把每个插件需要的部分作为插件参数传入。插件不读全局配置，也不直接读 `process.env`。
+- 需要 Electron 的能力在 core 中定义服务，由 `main/plugins` 中的插件提供：网络请求注入 `ctx.http`（`core/http` 的抽象类 `HttpService`），main 的子类用会走系统代理的 `net.fetch` 实现它；以后的 CLI 换一个子类即可。
 - ohmyswitch 自己的状态只通过 `StoreService.update` 修改，它负责校验、原子写入和串行化，逻辑在 `core/store/store.ts`。目前只在进程内串行化，多个进程同时写入前需要加跨进程锁和写前比对。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
 - API Key 明文保存在 `store.json` 中，文件权限为 `0600`。不加密，也不接系统钥匙串：Key 最终会明文写进 Harness 的配置文件，而且钥匙串在 Linux 上并不可靠。API Key 不写入日志，列表等不需要展示 Key 的接口也不返回它。
 - 写 Harness 配置时：

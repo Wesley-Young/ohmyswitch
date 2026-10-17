@@ -36,7 +36,7 @@ export interface AssetOptions {
   /** Built renderer files, served in production. */
   rendererDir: string;
   /** Vite dev server URL; set in development only. */
-  rendererDevUrl: string | undefined;
+  rendererDevUrl?: string | undefined;
 }
 
 /** Serves the renderer: proxies to the Vite dev server in development, reads built files otherwise. */

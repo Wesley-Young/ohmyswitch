@@ -1,22 +1,37 @@
-import { serviceToken } from '@fraqjs/kernel';
+import { type Context, Service } from 'cordis';
 import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 
 import icon from '../../../../build/icon.png?asset';
 import macIcon from '../../../../build/icon-mac.png?asset';
 
+declare module 'cordis' {
+  interface Context {
+    window: WindowService;
+  }
+}
+
 function openExternal(url: string) {
   if (/^https?:\/\//.test(url)) void shell.openExternal(url);
 }
 
-/** The main window. There is at most one; it is created on demand and forgotten once closed. */
-export class WindowService {
-  static readonly token = serviceToken<WindowService>('ohmyswitch/window');
+/**
+ * The main window. There is at most one; it is created on demand and forgotten once closed. It opens when the
+ * service loads, which injecting the protocol orders after app:// is served.
+ */
+export class WindowService extends Service {
+  static readonly inject = ['protocol'];
+  /** Where the renderer is served; pages from anywhere else never load inside the window. */
   private readonly origin: string;
   private window: BrowserWindow | undefined;
 
-  /** `origin` is where the renderer is served; pages from anywhere else never load inside the window. */
-  constructor(origin: string) {
-    this.origin = origin;
+  constructor(ctx: Context) {
+    super(ctx, 'window');
+    this.origin = ctx.protocol.origin;
+  }
+
+  [Service.init]() {
+    this.show();
+    return () => this.window?.destroy();
   }
 
   /** Bring the main window forward, creating it when there is none. */

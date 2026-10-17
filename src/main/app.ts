@@ -1,41 +1,44 @@
-import { DeepLinksPlugin } from '../core/deep-links/index.ts';
+import type { Context } from 'cordis';
+
+import { DeepLinkService } from '../core/deep-links/service.ts';
 import { DshHarnessPlugin } from '../core/harness-dsh/index.ts';
 import { OpenCodeHarnessPlugin } from '../core/harness-opencode/index.ts';
 import { PiHarnessPlugin } from '../core/harness-pi/index.ts';
-import { HarnessesPlugin } from '../core/harnesses/index.ts';
-import { IconsPlugin } from '../core/icons/index.ts';
-import { AppContext } from '../core/kernel.ts';
-import { ModelsDevPlugin } from '../core/models-dev/index.ts';
-import { ProvidersPlugin } from '../core/providers/index.ts';
-import { StorePlugin } from '../core/store/index.ts';
+import { HarnessService } from '../core/harnesses/service.ts';
+import { IconService } from '../core/icons/service.ts';
+import { ModelsDevService } from '../core/models-dev/service.ts';
+import { ProviderService } from '../core/providers/service.ts';
+import { StoreService } from '../core/store/service.ts';
 import type { AppConfig } from './config.ts';
-import { logHandler } from './logging.ts';
-import { HttpPlugin } from './plugins/http/index.ts';
-import { ProtocolPlugin } from './plugins/protocol/index.ts';
-import { WindowPlugin } from './plugins/window/index.ts';
+import { ElectronHttpService } from './plugins/http/service.ts';
+import { AppProtocol } from './plugins/protocol/service.ts';
+import { WindowService } from './plugins/window/service.ts';
 
 import { join } from 'node:path';
 
-/** The composition root: every plugin gets exactly the configuration it needs here. */
-export function createApp(config: AppConfig) {
-  const ctx = AppContext.create();
-  ctx.logBus.on('log', logHandler);
-  ctx.install(HttpPlugin);
-  ctx.install(StorePlugin, { dataDir: config.dataDir });
-  ctx.install(ModelsDevPlugin, { cachePath: join(config.dataDir, 'cache', 'models-dev.json') });
-  ctx.install(IconsPlugin, { cacheDir: join(config.dataDir, 'cache', 'icons') });
-  ctx.install(HarnessesPlugin, { home: config.home, env: config.env });
-  // Each harness registers itself; the order here is the order they are listed in.
-  ctx.install(OpenCodeHarnessPlugin);
-  ctx.install(PiHarnessPlugin);
-  ctx.install(DshHarnessPlugin);
-  ctx.install(ProvidersPlugin);
-  ctx.install(DeepLinksPlugin);
-  ctx.install(ProtocolPlugin, {
-    version: config.version,
-    rendererDir: config.rendererDir,
-    rendererDevUrl: config.rendererDevUrl,
-  });
-  ctx.install(WindowPlugin);
-  return ctx;
-}
+/**
+ * The composition root: every plugin gets exactly the configuration it needs here. Plugins start as soon as the
+ * services they inject exist, so the order below does not matter, except that harnesses are listed in the order
+ * they are installed.
+ */
+export const App = {
+  name: 'ohmyswitch',
+  apply(ctx: Context, config: AppConfig) {
+    ctx.plugin(ElectronHttpService);
+    ctx.plugin(StoreService, { dataDir: config.dataDir });
+    ctx.plugin(ModelsDevService, { cachePath: join(config.dataDir, 'cache', 'models-dev.json') });
+    ctx.plugin(IconService, { cacheDir: join(config.dataDir, 'cache', 'icons') });
+    ctx.plugin(HarnessService, { home: config.home, env: config.env });
+    ctx.plugin(OpenCodeHarnessPlugin);
+    ctx.plugin(PiHarnessPlugin);
+    ctx.plugin(DshHarnessPlugin);
+    ctx.plugin(ProviderService);
+    ctx.plugin(DeepLinkService);
+    ctx.plugin(AppProtocol, {
+      version: config.version,
+      rendererDir: config.rendererDir,
+      rendererDevUrl: config.rendererDevUrl,
+    });
+    ctx.plugin(WindowService);
+  },
+};
