@@ -29,7 +29,7 @@ export function applyUserDataOverride() {
   }
 }
 
-/** Read once at startup; plugins use `ctx.config` and never read `process.env` directly. */
+/** Read once at startup; `app.ts` hands each plugin its part, and plugins never read `process.env` directly. */
 export function loadConfig(): AppConfig {
   const home = homedir();
   return {

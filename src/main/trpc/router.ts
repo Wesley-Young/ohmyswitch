@@ -1,24 +1,24 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 
-import { harnessRoutes } from '../plugins/harnesses/router.ts';
-import type { HarnessService } from '../plugins/harnesses/service.ts';
-import { providerRoutes } from '../plugins/providers/router.ts';
-import type { ProviderService } from '../plugins/providers/service.ts';
+import type { HarnessService } from '../../core/harnesses/service.ts';
+import type { ProviderService } from '../../core/providers/service.ts';
 import { publicProcedure, router } from './procedures.ts';
+import { harnessRoutes } from './routes/harnesses.ts';
+import { providerRoutes } from './routes/providers.ts';
 
+/** The services behind the routes; the protocol plugin passes its context, which injects them. */
 export interface RouterServices {
-  version: string;
   providers: ProviderService;
   harnesses: HarnessService;
 }
 
 /** Combines every module's routes; this is the complete RPC surface. */
-export function createAppRouter(services: RouterServices) {
+export function createAppRouter(services: RouterServices, version: string) {
   return router({
     system: {
       info: publicProcedure.query(() => ({
         name: 'ohmyswitch',
-        version: services.version,
+        version,
         platform: process.platform,
       })),
     },

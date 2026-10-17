@@ -12,7 +12,7 @@
 | `<home>/cordis.patch.yml` | 是 | 否 | home 层 patch，只检查它是否覆盖了 `llm-pi-ai` |
 | `<home>/.env`、各 profile 的其他文件 | 否 | 否 | |
 
-`<home>` 是 `DSH_HOME`（支持绝对路径和 `~/`；DSH 自己还接受相对路径，按启动目录解析，ohmyswitch 无法知道启动目录，忽略），未设置时为 `~/.dsh`。见 `src/core/harness/dsh.ts`。
+`<home>` 是 `DSH_HOME`（支持绝对路径和 `~/`；DSH 自己还接受相对路径，按启动目录解析，ohmyswitch 无法知道启动目录，忽略），未设置时为 `~/.dsh`。见 `src/core/harness-dsh/descriptor.ts`。
 
 ## patch 的叠加规则
 

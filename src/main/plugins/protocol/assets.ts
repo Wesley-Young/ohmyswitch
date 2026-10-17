@@ -32,8 +32,15 @@ const contentSecurityPolicy = [
 
 const notFound = () => new Response('Not Found', { status: 404 });
 
+export interface AssetOptions {
+  /** Built renderer files, served in production. */
+  rendererDir: string;
+  /** Vite dev server URL; set in development only. */
+  rendererDevUrl: string | undefined;
+}
+
 /** Serves the renderer: proxies to the Vite dev server in development, reads built files otherwise. */
-export function createAssetHandler(options: { rendererDir: string; rendererDevUrl: string | undefined }) {
+export function createAssetHandler(options: AssetOptions) {
   const { rendererDir, rendererDevUrl } = options;
 
   if (rendererDevUrl) {

@@ -1,26 +1,22 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, dialog } from 'electron';
 
+import type { AppContext } from '../core/kernel.ts';
 import { createApp } from './app.ts';
 import { applyUserDataOverride, loadConfig } from './config.ts';
-import type { AppContext } from './kernel.ts';
 import { globalLogger } from './logging.ts';
 import { registerAppScheme } from './plugins/protocol/scheme.ts';
-import { createMainWindow } from './window.ts';
+import { WindowService } from './plugins/window/service.ts';
 
+// Process-level lifecycle only: the single-instance lock, startup and shutdown. Everything else is a plugin.
 applyUserDataOverride();
 registerAppScheme();
 
 let ctx: AppContext | undefined;
 let stopping = false;
 
-function focusOrCreateWindow() {
-  const [window] = BrowserWindow.getAllWindows();
-  if (!window) {
-    createMainWindow();
-    return;
-  }
-  if (window.isMinimized()) window.restore();
-  window.focus();
+/** Before startup finishes there is nothing to show; the window plugin opens the window when it starts. */
+function showWindow() {
+  if (ctx?.state === 'started') ctx.resolve(WindowService).show();
 }
 
 async function start() {
@@ -34,14 +30,13 @@ async function start() {
     app.exit(1);
     return;
   }
-  createMainWindow();
-  app.on('activate', focusOrCreateWindow);
+  app.on('activate', showWindow);
 }
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', focusOrCreateWindow);
+  app.on('second-instance', showWindow);
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });

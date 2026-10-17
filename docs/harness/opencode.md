@@ -10,7 +10,7 @@
 | 项目目录中的 `opencode.json(c)`、`.opencode/` | 否 | 否 | 项目级配置不碰 |
 | OpenCode 数据目录（`~/.local/share/opencode`，含凭据数据库） | 否 | 否 | 登录凭据不读不写 |
 
-- `<configDir>` 是 `$XDG_CONFIG_HOME/opencode`，未设置时为 `~/.config/opencode`（所有平台相同）。见 `src/core/harness/opencode.ts`。
+- `<configDir>` 是 `$XDG_CONFIG_HOME/opencode`，未设置时为 `~/.config/opencode`（所有平台相同）。见 `src/core/harness-opencode/descriptor.ts`。
 - OpenCode 两个全局文件都会读取，`opencode.jsonc` 优先级更高。OpenCode 自己更新全局配置时，写入两者中最后一个存在的（即 `opencode.jsonc` 优先），都不存在时新建 `opencode.jsonc`。ohmyswitch 用同样的规则选文件。
 - 默认模型（`model`）等其他设置不写。
 - 已应用后用户又新建了 `opencode.jsonc` 时，ohmyswitch 改为以它为准，原来写在 `opencode.json` 里的条目显示为「已被移除」；重新写入会写到 `opencode.jsonc`，旧条目留在 `opencode.json` 中（OpenCode 以 `opencode.jsonc` 的为准）。

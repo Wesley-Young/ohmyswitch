@@ -3,28 +3,32 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。各自的位置、路径规则和读写逻辑在 `src/core/harness/` 中定义。列表里的 Harness 都能写入，尚未接入的不列出。
-- 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。主进程使用 `@fraqjs/kernel` 插件和 tRPC；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
+- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑，在 `apply` 中把自己的 `HarnessDescriptor` 注册到 `HarnessService`。只有注册了的 Harness 才列出，都能写入，顺序就是 `app.ts` 中的安装顺序。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、在 `app.ts` 中安装，`HarnessService` 不用改。未注册的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
+- 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。业务逻辑组织成 `@fraqjs/kernel` 插件，主进程用 tRPC 提供给界面；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。
 
 ## 目录与依赖方向
 
-- `src/core/`：与 Electron 无关的领域模型和纯逻辑，包括供应商 schema、Harness 描述、配置投影和原子写入。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）和 yaml（编辑带注释的 YAML 配置），Node 可以直接运行。
-- `src/main/`：主进程。`index.ts` 管理 Electron 生命周期，`app.ts` 装配插件，`plugins/` 按业务模块划分，`trpc/` 汇总路由。
+- `src/core/`：与 Electron 无关的部分，GUI 和以后的 CLI/TUI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）和 `@fraqjs/kernel`。
+  - 顶层文件是共享的纯逻辑：供应商 schema、错误、路径、原子写入、文件锁等。`kernel.ts` 定义上下文和 `definePlugin`。
+  - 每个子目录是一个插件模块：`store`、`http`（只定义服务）、`models-dev`、`providers`、`harnesses`（注册表和写入流程）、`harness-<id>`（每个 Harness 一个）。
+  - 只有 `kernel.ts` 和模块的 `index.ts`、`service.ts` 依赖内核，其余文件都是纯逻辑。core 不依赖 Electron 和 tRPC。由 Biome 检查。
+- `src/main/`：Electron 主进程，只做组装和 Electron 专用的部分。`index.ts` 只管进程级生命周期（单实例锁、启动、退出）；`app.ts` 把 core 的插件和 `plugins/` 中的插件组装起来，是唯一的组装入口；`plugins/` 只放 Electron 专用插件（`http`、`protocol`、`window`）；`trpc/` 是 RPC 层，`routes/` 下每个模块一个文件，由 `router.ts` 汇总。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
 - `src/core`、`src/main` 中的相对导入写 `.ts` 后缀；渲染进程用 `@/` 别名，不写后缀。
 - ohmyswitch 的数据目录是 `~/.ohmyswitch`（`store.json`、`cache/`），由 `core/paths.ts` 决定，GUI 和以后的 CLI/TUI 共用。Electron 的 userData 只放 Chromium 状态和单实例锁。
 - 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，它会同时隔离数据目录、userData 和单实例锁，不影响已安装的应用。
 
-## 主进程
+## 插件
 
-- 每个模块 `plugins/<name>/` 的文件分工：`index.ts` 装配插件，显式声明 `inject` 和 `provides`；`service.ts` 是主 service，命名为 `XxxService`；`schemas.ts` 是 RPC 输入校验；`router.ts` 是 tRPC 路由。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
-- 有状态的服务以实例注册。插件没有 stop 钩子，需要释放的资源在 service 的 `dispose()` 中释放。
-- 配置在启动时由 `loadConfig()` 读取一次，插件通过 `ctx.config` 使用，不直接读 `process.env`。
-- 渲染进程和 RPC 都由 `app://ohmyswitch` 提供（`plugins/protocol`）：`/api/trpc` 交给 tRPC 的 fetch 适配器，其余路径是界面资源，开发时代理到 Vite dev server。不使用 preload 和 `ipcMain`，新增能力一律写成 tRPC 过程。
-- ohmyswitch 自己的状态只通过 `StoreService.update` 修改，它负责校验、原子写入和串行化；逻辑在 `core/store.ts`，不依赖 Electron，以便 CLI/TUI 复用。目前只在进程内串行化，多个进程同时写入前需要加跨进程锁和写前比对。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
+- 模块 `core/<name>/` 的文件分工：`index.ts` 装配插件，显式声明 `inject` 和 `provides`；`service.ts` 是主 service，命名为 `XxxService`；`schemas.ts` 是 service 的输入校验，RPC 和以后的 CLI 共用；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
+- service 的构造函数第一个参数是依赖接口 `XxxDeps`（其他 service 和 `logger`），`index.ts` 直接传入插件的 `ctx`，因此 `XxxDeps` 和 `inject` 保持一致；插件参数等其他输入放在后面的参数中。service 不依赖内核类型。
+- 有状态的服务以实例注册。插件的 `apply` 只创建并注册服务；对外的副作用（开始处理 `app://` 请求、打开窗口）放在 `start` 钩子里，执行顺序由 `inject` 决定，不在 `index.ts` 中手动安排。插件没有 stop 钩子，需要释放的资源在 service 的 `dispose()` 中释放。
+- 配置在启动时由 `loadConfig()` 读取一次，`app.ts` 在 `install` 时把每个插件需要的部分作为插件参数传入（插件导出 `XxxOptions`）。插件不读全局配置，也不直接读 `process.env`。
+- 需要 Electron 的能力在 core 中定义服务，由 `main/plugins` 中的插件提供：网络请求注入 `HttpService`（`core/http`），main 用会走系统代理的 `net.fetch` 提供它；以后的 CLI 换一个实现即可。
+- ohmyswitch 自己的状态只通过 `StoreService.update` 修改，它负责校验、原子写入和串行化，逻辑在 `core/store/store.ts`。目前只在进程内串行化，多个进程同时写入前需要加跨进程锁和写前比对。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
 - API Key 明文保存在 `store.json` 中，文件权限为 `0600`。不加密，也不接系统钥匙串：Key 最终会明文写进 Harness 的配置文件，而且钥匙串在 Linux 上并不可靠。API Key 不写入日志，列表等不需要展示 Key 的接口也不返回它。
 - 写 Harness 配置时：
   - 只改 ohmyswitch 负责的条目，其他内容原样保留，能保留注释的格式就保留注释。
@@ -32,12 +36,17 @@
   - 不写默认供应商和默认模型。
   - 不碰 Harness 的登录凭据（如 Pi 的 `auth.json`、DSH 凭据文件中的 `records`）。Harness 只能从凭据库读取 API Key 时（如 DSH 的 `.credentials.yaml`），可以在其中增删 ohmyswitch 自己的 Key 条目，其他条目不读取其值、不修改。
   - 实现某个 Harness 之前，先在 `docs/harness/<id>.md` 写明它的原生配置契约（读写哪些文件和字段、明确不碰哪些）。契约以 Harness 的源码为准，注明核对的版本。
-  - Harness 写入哪些文件由它的 `HarnessDescriptor.configFiles` 决定（可以有多个，如 DSH 的每个 profile 和凭据文件）。每个文件的读写逻辑是 `core/harness/` 中的一个 `HarnessAdapter`（只做文本到文本的转换），文件读写、加锁、写前比对和记录在 `HarnessService` 中。Harness 自己写文件时有跨进程锁的，写入时使用同样的锁（`core/file-lock.ts`）。保持实现与契约文档一致。
+  - Harness 写入哪些文件由它的 `HarnessDescriptor.configFiles` 决定（可以有多个，如 DSH 的每个 profile 和凭据文件）。每个文件的读写逻辑是一个 `HarnessAdapter`（在 `core/harness-<id>/config.ts` 中，只做文本到文本的转换）。文件读写、串行化、加锁和写前比对在 `core/harnesses/editor.ts` 的 `ConfigEditor` 中，应用状态和 key 分配是 `core/harnesses/applications.ts` 中的纯函数；`HarnessService` 只负责注册、编排和记录。Harness 自己写文件时有跨进程锁的，写入时使用同样的锁（`core/file-lock.ts`）。保持实现与契约文档一致。
+
+## 主进程
+
+- 渲染进程和 RPC 都由 `app://ohmyswitch` 提供（`plugins/protocol` 的 `AppProtocol`）：`/api/trpc` 交给 tRPC 的 fetch 适配器，其余路径是界面资源，开发时代理到 Vite dev server。不使用 preload 和 `ipcMain`，新增能力一律写成 tRPC 过程。
+- 主窗口是 `plugins/window` 的 `WindowService`。`index.ts` 只在 `activate`、`second-instance` 时调用它。
 
 ## 渲染进程
 
 - 服务端数据用 TanStack Query 管理，使用 `@/lib/trpc` 的 `trpc` 提供的 `queryOptions`、`mutationOptions` 和缓存失效接口，不自己写请求或状态 hooks。数据变更后的缓存刷新放在 `lib/cache.ts`。
-- 只有 `lib/trpc.ts` 引用主进程，且只引用类型。与后端对应的枚举从 `RouterOutputs` 派生；文案表用 `satisfies Record<..., string>` 覆盖全部取值。
+- 只有 `lib/trpc.ts` 引用主进程，且只引用类型。与后端对应的枚举从 `RouterOutputs` 派生；文案表用 `satisfies Record<..., string>` 覆盖全部取值。Harness id 是开放的（由插件注册），按 id 查的表要有兜底，名称从 `harnesses.list` 取。
 - 渲染进程运行在沙箱中，不使用 Electron 和 Node API。
 - 用 `pnpm ui:add <component...>` 添加 shadcn 组件。脚本会把组件新增的依赖移到 `devDependencies`，并格式化生成的文件。尽量不改 `components/ui/` 中的组件，需要定制时在 `components/` 中组合。
 

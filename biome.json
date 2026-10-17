@@ -75,7 +75,8 @@
               "level": "error",
               "options": {
                 "paths": {
-                  "electron": "core 不依赖 Electron，主进程能力放在 src/main。"
+                  "electron": "core 不依赖 Electron；Electron 能力由 src/main/plugins 中的插件以服务提供。",
+                  "@fraqjs/kernel": "只有 kernel.ts 和模块的 index.ts、service.ts 依赖内核；其余文件是纯逻辑。"
                 },
                 "patterns": [
                   {
@@ -85,31 +86,11 @@
                       "react",
                       "react-dom"
                     ],
-                    "message": "core 只放领域模型和纯逻辑，不依赖主进程或界面。"
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "includes": ["src/main/plugins/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "patterns": [
-                  {
-                    "group": ["@trpc/server", "@trpc/server/*", "**/trpc/**"],
-                    "message": "业务代码不依赖 tRPC，传输层映射放在模块的 router.ts 中。"
+                    "message": "core 不依赖主进程或界面。"
                   },
                   {
-                    "group": ["**/renderer/**"],
-                    "message": "主进程不依赖界面代码。"
+                    "group": ["@trpc/server", "@trpc/server/*"],
+                    "message": "core 不依赖 tRPC；路由在 src/main/trpc/routes 中。"
                   }
                 ]
               }
@@ -120,13 +101,56 @@
     },
     {
       "includes": [
-        "src/main/plugins/*/index.ts",
-        "src/main/plugins/*/router.ts"
+        "src/core/kernel.ts",
+        "src/core/*/index.ts",
+        "src/core/*/service.ts"
       ],
       "linter": {
         "rules": {
           "style": {
-            "noRestrictedImports": "off"
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "core 不依赖 Electron；Electron 能力由 src/main/plugins 中的插件以服务提供。"
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "**/main/**",
+                      "**/renderer/**",
+                      "react",
+                      "react-dom"
+                    ],
+                    "message": "core 不依赖主进程或界面。"
+                  },
+                  {
+                    "group": ["@trpc/server", "@trpc/server/*"],
+                    "message": "core 不依赖 tRPC；路由在 src/main/trpc/routes 中。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/main/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/renderer/**"],
+                    "message": "主进程不依赖界面代码。"
+                  }
+                ]
+              }
+            }
           }
         }
       }

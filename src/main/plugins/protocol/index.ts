@@ -1,38 +1,25 @@
-import { type Disposable, serviceToken } from '@fraqjs/kernel';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
-import { protocol } from 'electron';
 
-import { definePlugin } from '../../kernel.ts';
+import { HarnessService } from '../../../core/harnesses/service.ts';
+import { definePlugin } from '../../../core/kernel.ts';
+import { ProviderService } from '../../../core/providers/service.ts';
 import { createAppRouter } from '../../trpc/router.ts';
-import { HarnessService } from '../harnesses/service.ts';
-import { ProviderService } from '../providers/service.ts';
-import { createAssetHandler } from './assets.ts';
-import { appHost, appScheme, rpcEndpoint } from './scheme.ts';
+import { type AssetOptions, createAssetHandler } from './assets.ts';
+import { appHost, rpcEndpoint } from './scheme.ts';
+import { AppProtocol } from './service.ts';
 
-/** Owns the app:// handler for the lifetime of the context. */
-export class AppProtocol implements Disposable {
-  static readonly token = serviceToken<AppProtocol>('ohmyswitch/protocol');
-
-  constructor(handler: (request: Request) => Promise<Response>) {
-    protocol.handle(appScheme, handler);
-  }
-
-  dispose() {
-    protocol.unhandle(appScheme);
-  }
+export interface ProtocolOptions extends AssetOptions {
+  /** The app version reported by `system.info`. */
+  version: string;
 }
 
 export const ProtocolPlugin = definePlugin({
   name: 'ohmyswitch-protocol',
   inject: { providers: ProviderService, harnesses: HarnessService },
   provides: [AppProtocol],
-  apply(ctx) {
-    const appRouter = createAppRouter({
-      version: ctx.config.version,
-      providers: ctx.providers,
-      harnesses: ctx.harnesses,
-    });
-    const serveAsset = createAssetHandler(ctx.config);
+  apply(ctx, options: ProtocolOptions) {
+    const appRouter = createAppRouter(ctx, options.version);
+    const serveAsset = createAssetHandler(options);
     const logger = ctx.logger;
 
     const handler = async (request: Request) => {
@@ -53,5 +40,9 @@ export const ProtocolPlugin = definePlugin({
     };
 
     ctx.provide(AppProtocol, new AppProtocol(handler));
+  },
+  // Serve only once every plugin has applied, so no request reaches a half-assembled app.
+  start(ctx) {
+    ctx.resolve(AppProtocol).listen();
   },
 });

@@ -10,7 +10,7 @@
 | `<agentDir>/auth.json` | 否 | 否 | 登录凭据，不读不写 |
 | `<agentDir>/settings.json` | 否 | 否 | 默认供应商、默认模型、启用的模型都在这里，ohmyswitch 不写默认值 |
 
-`<agentDir>` 是 `PI_CODING_AGENT_DIR`（支持绝对路径和 `~/`），未设置时为 `~/.pi/agent`。见 `src/core/harness/pi.ts`。
+`<agentDir>` 是 `PI_CODING_AGENT_DIR`（支持绝对路径和 `~/`），未设置时为 `~/.pi/agent`。见 `src/core/harness-pi/descriptor.ts`。
 
 ## models.json 的格式
 

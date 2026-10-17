@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { endpoints } from './endpoints.ts';
-import { harnessIds } from './harness/types.ts';
+import { harnessId } from './harnesses/types.ts';
 
 export const providerName = z
   .string()
@@ -76,8 +76,11 @@ export const storedProvider = z.object({
   endpoint: z.enum(endpoints),
   apiKey: z.string(),
   models: z.array(modelInfo),
-  /** Harnesses this provider is applied to, with the key ohmyswitch owns in each harness config. */
-  harnesses: z.partialRecord(z.enum(harnessIds), z.object({ key: z.string().min(1).max(64) })).default({}),
+  /**
+   * Harnesses this provider is applied to, with the key ohmyswitch owns in each harness config. Entries of
+   * harnesses that are not registered are kept, so the application survives until the harness is back.
+   */
+  harnesses: z.record(harnessId, z.object({ key: z.string().min(1).max(64) })).default({}),
   createdAt: z.iso.datetime(),
 });
 
