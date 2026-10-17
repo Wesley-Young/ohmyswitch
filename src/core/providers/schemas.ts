@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { endpoints } from '../endpoints.ts';
-import { baseUrl, modelInfo, providerName } from '../provider.ts';
+import { baseUrl, iconUrl, modelInfo, providerName } from '../provider.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
 
@@ -11,6 +11,8 @@ export const createProviderInput = z.object({
   baseUrl,
   apiKey: z.string().trim().min(1, { error: '请填写 API Key' }).max(4096),
   endpoint: z.enum(endpoints, { error: '请选择端点' }),
+  /** Unset or empty uses the icon of the Base URL's site. */
+  iconUrl: iconUrl.optional(),
 });
 
 export const updateProviderInput = createProviderInput.extend(providerIdInput.shape);

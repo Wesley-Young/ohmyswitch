@@ -1,15 +1,18 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 
 import type { HarnessService } from '../../core/harnesses/service.ts';
+import type { IconService } from '../../core/icons/service.ts';
 import type { ProviderService } from '../../core/providers/service.ts';
 import { publicProcedure, router } from './procedures.ts';
 import { harnessRoutes } from './routes/harnesses.ts';
+import { iconRoutes } from './routes/icons.ts';
 import { providerRoutes } from './routes/providers.ts';
 
 /** The services behind the routes; the protocol plugin passes its context, which injects them. */
 export interface RouterServices {
   providers: ProviderService;
   harnesses: HarnessService;
+  icons: IconService;
 }
 
 /** Combines every module's routes; this is the complete RPC surface. */
@@ -24,6 +27,7 @@ export function createAppRouter(services: RouterServices, version: string) {
     },
     providers: providerRoutes(services.providers),
     harnesses: harnessRoutes(services.harnesses),
+    icons: iconRoutes(services.icons),
   });
 }
 

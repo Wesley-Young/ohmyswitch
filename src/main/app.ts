@@ -2,6 +2,7 @@ import { DshHarnessPlugin } from '../core/harness-dsh/index.ts';
 import { OpenCodeHarnessPlugin } from '../core/harness-opencode/index.ts';
 import { PiHarnessPlugin } from '../core/harness-pi/index.ts';
 import { HarnessesPlugin } from '../core/harnesses/index.ts';
+import { IconsPlugin } from '../core/icons/index.ts';
 import { AppContext } from '../core/kernel.ts';
 import { ModelsDevPlugin } from '../core/models-dev/index.ts';
 import { ProvidersPlugin } from '../core/providers/index.ts';
@@ -21,6 +22,7 @@ export function createApp(config: AppConfig) {
   ctx.install(HttpPlugin);
   ctx.install(StorePlugin, { dataDir: config.dataDir });
   ctx.install(ModelsDevPlugin, { cachePath: join(config.dataDir, 'cache', 'models-dev.json') });
+  ctx.install(IconsPlugin, { cacheDir: join(config.dataDir, 'cache', 'icons') });
   ctx.install(HarnessesPlugin, { home: config.home, env: config.env });
   // Each harness registers itself; the order here is the order they are listed in.
   ctx.install(OpenCodeHarnessPlugin);

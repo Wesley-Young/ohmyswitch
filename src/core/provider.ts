@@ -19,6 +19,17 @@ export const baseUrl = z
   .pipe(z.url({ protocol: /^https?$/, error: '请填写 http 或 https 地址' }))
   .transform((value) => value.replace(/\/+$/, '').replace(/\/(v1|v1beta)$/, ''));
 
+/**
+ * Where a provider's icon comes from: an image, or a web page whose declared icon is used. An empty value means
+ * unset, in which case the icon of the Base URL's site is used.
+ */
+export const iconUrl = z
+  .string()
+  .trim()
+  .max(2048, { error: '地址最多 2048 个字符' })
+  .transform((value) => value || undefined)
+  .pipe(z.url({ protocol: /^https?$/, error: '请填写 http 或 https 地址' }).optional());
+
 /** Input kinds a model accepts. Text is always accepted; the others are listed when supported. */
 export const modelInputs = ['text', 'image', 'pdf'] as const;
 
@@ -75,6 +86,8 @@ export const storedProvider = z.object({
   baseUrl,
   endpoint: z.enum(endpoints),
   apiKey: z.string(),
+  /** An image or web page to take the icon from; unset uses the Base URL's site. */
+  iconUrl: z.url({ protocol: /^https?$/ }).optional(),
   models: z.array(modelInfo),
   /**
    * Harnesses this provider is applied to, with the key ohmyswitch owns in each harness config. Entries of

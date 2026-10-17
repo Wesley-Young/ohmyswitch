@@ -10,6 +10,8 @@ export interface ProviderValues {
   apiKey: string;
   /** Unset until the user picks one; there is no default endpoint. */
   endpoint: Endpoint | undefined;
+  /** An image or web page to take the icon from; empty uses the Base URL's site. */
+  iconUrl: string;
 }
 
 export const emptyProviderValues: ProviderValues = {
@@ -17,9 +19,23 @@ export const emptyProviderValues: ProviderValues = {
   baseUrl: '',
   apiKey: '',
   endpoint: undefined,
+  iconUrl: '',
 };
 
-/** The connection fields of a provider: name, Base URL, API Key and endpoint. Only the text inputs are width-limited. */
+/** The site whose icon is used when no icon address is given, shown as the field's placeholder. */
+function siteOf(baseUrl: string) {
+  try {
+    const url = new URL(baseUrl.trim());
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The connection fields of a provider: name, Base URL, API Key, endpoint and icon. Only the text inputs are
+ * width-limited.
+ */
 export function ProviderFields({
   values,
   onChange,
@@ -91,6 +107,19 @@ export function ProviderFields({
         </RadioGroup>
         <FieldError>{fieldError('endpoint')}</FieldError>
       </FieldSet>
+      <Field className="max-w-md" data-invalid={Boolean(fieldError('iconUrl'))}>
+        <FieldLabel htmlFor="provider-icon-url">图标</FieldLabel>
+        <Input
+          id="provider-icon-url"
+          className="font-mono"
+          placeholder={siteOf(values.baseUrl) ?? 'https://example.com'}
+          value={values.iconUrl}
+          maxLength={2048}
+          aria-invalid={Boolean(fieldError('iconUrl'))}
+          onChange={(event) => set('iconUrl', event.target.value)}
+        />
+        <FieldError>{fieldError('iconUrl')}</FieldError>
+      </Field>
     </FieldGroup>
   );
 }

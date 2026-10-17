@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { TRPCClientError } from '@trpc/client';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner';
 
 import { DeleteProviderDialog } from '@/components/delete-provider-dialog';
 import { HarnessApplications } from '@/components/harness-applications';
@@ -14,16 +15,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formError, trpc } from '@/lib/trpc';
+import { formError, queryClient, trpc } from '@/lib/trpc';
 
 export default function ProviderDetail() {
   const { providerId = '' } = useParams();
   const navigate = useNavigate();
   const provider = useQuery(trpc.providers.get.queryOptions({ providerId }));
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const refreshIcon = useMutation(
+    trpc.icons.refresh.mutationOptions({
+      onSuccess: async ({ found }, input) => {
+        await queryClient.invalidateQueries(trpc.icons.get.queryFilter(input));
+        if (found) toast.success('已刷新图标');
+        else toast.warning('没有找到图标，可以在编辑中指定');
+      },
+      onError: (error) => toast.error(formError(error)?.message),
+    }),
+  );
 
   if (provider.isPending) return <DetailSkeleton />;
   if (provider.isError) {
@@ -47,7 +59,7 @@ export default function ProviderDetail() {
     <>
       <PageHeader
         title={data.name}
-        icon={<ProviderAvatar name={data.name} endpoint={data.endpoint} size="lg" />}
+        icon={<ProviderAvatar providerId={data.id} name={data.name} endpoint={data.endpoint} size="lg" />}
         actions={
           <>
             <Button nativeButton={false} render={<Link to={`/providers/${data.id}/edit`} />}>
@@ -58,6 +70,14 @@ export default function ProviderDetail() {
                 <MoreHorizontal />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={refreshIcon.isPending}
+                  onClick={() => refreshIcon.mutate({ providerId: data.id })}
+                >
+                  <RefreshCw className={refreshIcon.isPending ? 'animate-spin' : undefined} />
+                  刷新图标
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                   <Trash2 />
                   删除
@@ -98,7 +118,7 @@ function DetailSkeleton() {
     <>
       <div className="border-b">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-8 pt-8 pb-6">
-          <Skeleton className="size-12 rounded-full" />
+          <Skeleton className="size-12 rounded-2xl" />
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-3 w-64" />

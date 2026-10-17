@@ -3,6 +3,7 @@ import { type Logger, serviceToken } from '@fraqjs/kernel';
 import { AppError } from '../errors.ts';
 import type { HarnessService } from '../harnesses/service.ts';
 import type { HttpService } from '../http/service.ts';
+import type { IconService } from '../icons/service.ts';
 import type { ModelsDevService } from '../models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '../provider.ts';
 import type { StoreService } from '../store/service.ts';
@@ -16,6 +17,7 @@ export interface ProviderDeps {
   harnesses: HarnessService;
   http: HttpService;
   modelsDev: ModelsDevService;
+  icons: IconService;
   logger: Logger;
 }
 
@@ -39,8 +41,8 @@ export class ProviderService {
 
   /** The connection fields for the editor, the only place the API key is returned. */
   connection(providerId: string) {
-    const { name, baseUrl, apiKey, endpoint } = this.find(this.deps.store.data.providers, providerId);
-    return { name, baseUrl, apiKey, endpoint };
+    const { name, baseUrl, apiKey, endpoint, iconUrl } = this.find(this.deps.store.data.providers, providerId);
+    return { name, baseUrl, apiKey, endpoint, iconUrl: iconUrl ?? '' };
   }
 
   /**
@@ -92,6 +94,8 @@ export class ProviderService {
       provider.baseUrl = input.baseUrl;
       provider.apiKey = input.apiKey;
       provider.endpoint = input.endpoint;
+      if (input.iconUrl) provider.iconUrl = input.iconUrl;
+      else delete provider.iconUrl;
     });
   }
 
@@ -102,6 +106,7 @@ export class ProviderService {
       baseUrl: input.baseUrl,
       endpoint: input.endpoint,
       apiKey: input.apiKey,
+      ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
       models: [],
       harnesses: {},
       createdAt: new Date().toISOString(),
@@ -123,6 +128,7 @@ export class ProviderService {
       if (index < 0) throw new AppError('not_found', '供应商不存在或已删除');
       draft.providers.splice(index, 1);
     });
+    await this.deps.icons.forget(providerId);
   }
 
   /**

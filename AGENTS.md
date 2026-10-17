@@ -12,7 +12,7 @@
 
 - `src/core/`：与 Electron 无关的部分，GUI 和以后的 CLI/TUI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）和 `@fraqjs/kernel`。
   - 顶层文件是共享的纯逻辑：供应商 schema、错误、路径、原子写入、文件锁等。`kernel.ts` 定义上下文和 `definePlugin`。
-  - 每个子目录是一个插件模块：`store`、`http`（只定义服务）、`models-dev`、`providers`、`harnesses`（注册表和写入流程）、`harness-<id>`（每个 Harness 一个）。
+  - 每个子目录是一个插件模块：`store`、`http`（只定义服务）、`models-dev`、`icons`（供应商图标的查找和缓存）、`providers`、`harnesses`（注册表和写入流程）、`harness-<id>`（每个 Harness 一个）。
   - 只有 `kernel.ts` 和模块的 `index.ts`、`service.ts` 依赖内核，其余文件都是纯逻辑。core 不依赖 Electron 和 tRPC。由 Biome 检查。
 - `src/main/`：Electron 主进程，只做组装和 Electron 专用的部分。`index.ts` 只管进程级生命周期（单实例锁、启动、退出）；`app.ts` 把 core 的插件和 `plugins/` 中的插件组装起来，是唯一的组装入口；`plugins/` 只放 Electron 专用插件（`http`、`protocol`、`window`）；`trpc/` 是 RPC 层，`routes/` 下每个模块一个文件，由 `router.ts` 汇总。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。

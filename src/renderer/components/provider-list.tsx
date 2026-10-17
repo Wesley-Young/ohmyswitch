@@ -60,7 +60,7 @@ function ProviderItem({ provider, applications }: { provider: Provider; applicat
         )
       }
     >
-      <ProviderAvatar name={provider.name} endpoint={provider.endpoint} />
+      <ProviderAvatar providerId={provider.id} name={provider.name} endpoint={provider.endpoint} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{provider.name}</span>
@@ -95,7 +95,7 @@ function ListSkeleton() {
     <div className="grid gap-0.5">
       {[0, 1, 2].map((index) => (
         <div key={index} className="flex items-center gap-3 px-2.5 py-2.5">
-          <Skeleton className="size-9 rounded-full" />
+          <Skeleton className="size-9 rounded-xl" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-3.5 w-24" />
             <Skeleton className="h-3 w-32" />

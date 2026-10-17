@@ -1,6 +1,7 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 
 import { HarnessService } from '../../../core/harnesses/service.ts';
+import { IconService } from '../../../core/icons/service.ts';
 import { definePlugin } from '../../../core/kernel.ts';
 import { ProviderService } from '../../../core/providers/service.ts';
 import { createAppRouter } from '../../trpc/router.ts';
@@ -15,7 +16,7 @@ export interface ProtocolOptions extends AssetOptions {
 
 export const ProtocolPlugin = definePlugin({
   name: 'ohmyswitch-protocol',
-  inject: { providers: ProviderService, harnesses: HarnessService },
+  inject: { providers: ProviderService, harnesses: HarnessService, icons: IconService },
   provides: [AppProtocol],
   apply(ctx, options: ProtocolOptions) {
     const appRouter = createAppRouter(ctx, options.version);
