@@ -1,5 +1,7 @@
+import type { HarnessAdapter } from './adapter.ts';
+
 /** Supported harnesses; the order is the display order. */
-export const harnessIds = ['opencode', 'pi', 'dsh'] as const;
+export const harnessIds = ['opencode', 'pi'] as const;
 
 export type HarnessId = (typeof harnessIds)[number];
 
@@ -9,7 +11,7 @@ export interface HarnessEnvironment {
   env: Readonly<Record<string, string | undefined>>;
 }
 
-/** Static facts about a harness. Reading and writing its config are added per harness as adapters grow. */
+/** A harness ohmyswitch can write providers into: where it lives, and how its config is read and written. */
 export interface HarnessDescriptor {
   readonly id: HarnessId;
   readonly name: string;
@@ -18,4 +20,6 @@ export interface HarnessDescriptor {
   homeDir(environment: HarnessEnvironment): string;
   /** Candidate provider config files in priority order. The first existing one is used; otherwise the first is created. */
   configFiles(environment: HarnessEnvironment): string[];
+  /** Reads and writes ohmyswitch's entries in the config file. */
+  readonly adapter: HarnessAdapter;
 }

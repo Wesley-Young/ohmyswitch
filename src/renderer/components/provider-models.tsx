@@ -110,7 +110,8 @@ export function ProviderModels({
   );
 }
 
-function ModelSummary({ model }: { model: Model }) {
+/** A model's id, name and known metadata, for lists. */
+export function ModelSummary({ model }: { model: Model }) {
   const facts = [
     model.contextWindow && `上下文 ${formatTokens(model.contextWindow)}`,
     model.maxOutput && `输出 ${formatTokens(model.maxOutput)}`,

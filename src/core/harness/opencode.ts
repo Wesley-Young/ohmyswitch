@@ -1,3 +1,4 @@
+import { openCodeAdapter } from './opencode-config.ts';
 import type { HarnessDescriptor, HarnessEnvironment } from './types.ts';
 
 import { isAbsolute, join } from 'node:path';
@@ -16,4 +17,5 @@ export const opencode: HarnessDescriptor = {
     const dir = homeDir(environment);
     return [join(dir, 'opencode.jsonc'), join(dir, 'opencode.json')];
   },
+  adapter: openCodeAdapter,
 };

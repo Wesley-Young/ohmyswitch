@@ -20,10 +20,12 @@ export function DeleteProviderDialog({
   provider,
   open,
   onOpenChange,
+  onDeleted,
 }: {
   provider: Provider | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDeleted?: () => void;
 }) {
   const harnesses = useQuery(trpc.harnesses.list.queryOptions());
   const applied = (provider?.harnesses ?? []).map(
@@ -32,8 +34,10 @@ export function DeleteProviderDialog({
   const remove = useMutation(
     trpc.providers.delete.mutationOptions({
       onSuccess: async () => {
-        await refreshProviders();
         onOpenChange(false);
+        toast.success(`已删除「${provider?.name}」`);
+        onDeleted?.();
+        await refreshProviders();
       },
       onError: (error) => toast.error(formError(error)?.message),
     }),

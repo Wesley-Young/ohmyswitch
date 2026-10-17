@@ -17,6 +17,7 @@ export const toPayload = (values: ProviderValues) => values as ProviderPayload;
 /** The full provider form used by the create and edit pages. */
 export function ProviderForm({
   initialValues,
+  cancelTo,
   submitLabel,
   pendingLabel,
   isPending,
@@ -24,6 +25,8 @@ export function ProviderForm({
   onSubmit,
 }: {
   initialValues: ProviderValues;
+  /** Where 取消 goes. */
+  cancelTo: string;
   submitLabel: string;
   pendingLabel: string;
   isPending: boolean;
@@ -97,7 +100,7 @@ export function ProviderForm({
         <Button type="submit" disabled={isPending}>
           {isPending ? pendingLabel : submitLabel}
         </Button>
-        <Button variant="outline" nativeButton={false} render={<Link to="/providers" />}>
+        <Button variant="outline" nativeButton={false} render={<Link to={cancelTo} />}>
           取消
         </Button>
       </div>

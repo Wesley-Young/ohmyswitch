@@ -3,7 +3,6 @@ import { serviceToken } from '@fraqjs/kernel';
 import { writeFileAtomic } from '../../../core/atomic-file.ts';
 import { AppError } from '../../../core/errors.ts';
 import {
-  adapters,
   type HarnessDescriptor,
   type HarnessEnvironment,
   type HarnessId,
@@ -60,7 +59,7 @@ export class HarnessService {
     this.modelsDev = modelsDev;
   }
 
-  /** Each harness, whether it is present on this machine, whether ohmyswitch can write to it, and its config file. */
+  /** Each harness, whether it is present on this machine, and its config file. */
   list() {
     return Promise.all(
       harnesses.map(async (harness) => ({
@@ -68,7 +67,6 @@ export class HarnessService {
         name: harness.name,
         homepage: harness.homepage,
         detected: await exists(harness.homeDir(this.environment), 'directory'),
-        supported: Boolean(adapters[harness.id]),
         configPath: await this.configPath(harness),
       })),
     );
@@ -78,9 +76,9 @@ export class HarnessService {
   async applications() {
     const result: Record<string, { harnessId: HarnessId; key: string; state: ApplicationState }[]> = {};
     for (const harness of harnesses) {
-      const adapter = adapters[harness.id];
+      const adapter = harness.adapter;
       const applied = this.store.data.providers.filter((provider) => provider.harnesses[harness.id]);
-      if (!adapter || !applied.length) continue;
+      if (!applied.length) continue;
       let entries: Record<string, unknown> | undefined;
       try {
         entries = adapter.readProviders(await readText(await this.configPath(harness)));
@@ -113,7 +111,7 @@ export class HarnessService {
     if (!(await exists(harness.homeDir(this.environment), 'directory'))) {
       throw new AppError('precondition_failed', `未发现 ${harness.name}`);
     }
-    const adapter = this.adapter(harness);
+    const adapter = harness.adapter;
     const owned = new Set(
       this.store.data.providers.flatMap((item) => (item.id === provider.id ? [] : [item.harnesses[harnessId]?.key])),
     );
@@ -162,7 +160,7 @@ export class HarnessService {
     for (const [harnessId, application] of this.applied(provider)) {
       const harness = this.harness(harnessId);
       try {
-        const adapter = this.adapter(harness);
+        const adapter = harness.adapter;
         await this.edit(harness, (text) =>
           adapter.write(text, application.key, adapter.entry(provider, adapter.readProviders(text)[application.key])),
         );
@@ -186,7 +184,7 @@ export class HarnessService {
     if (!key) return undefined;
     const harness = this.harness(harnessId);
     try {
-      const adapter = this.adapter(harness);
+      const adapter = harness.adapter;
       await this.edit(harness, (text) =>
         adapter.readProviders(text)[key] === undefined ? text : adapter.write(text, key, undefined),
       );
@@ -201,7 +199,7 @@ export class HarnessService {
    * rather than overwrite someone else's edit. Existing files keep their permissions.
    */
   private edit(harness: HarnessDescriptor, change: (text: string | undefined) => string | undefined) {
-    const adapter = this.adapter(harness);
+    const adapter = harness.adapter;
     const run = async () => {
       const path = await this.configPath(harness);
       const text = await readText(path);
@@ -257,11 +255,5 @@ export class HarnessService {
     const harness = harnesses.find((item) => item.id === harnessId);
     if (!harness) throw new AppError('not_found', '不支持这个 Harness');
     return harness;
-  }
-
-  private adapter(harness: HarnessDescriptor) {
-    const adapter = adapters[harness.id];
-    if (!adapter) throw new AppError('bad_request', `暂不支持写入 ${harness.name}`);
-    return adapter;
   }
 }

@@ -15,7 +15,7 @@ export default function ProviderNew() {
       onSuccess: async (provider) => {
         await refreshProviders();
         toast.success(`已添加「${provider.name}」`);
-        navigate('/providers');
+        navigate(`/providers/${provider.id}`);
       },
     }),
   );
@@ -25,6 +25,7 @@ export default function ProviderNew() {
       <PageHeader title="添加供应商" backTo="/providers" />
       <PageContent>
         <ProviderForm
+          cancelTo="/providers"
           initialValues={emptyProviderValues}
           submitLabel="添加"
           pendingLabel="正在添加…"

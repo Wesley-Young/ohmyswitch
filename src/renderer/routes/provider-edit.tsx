@@ -19,7 +19,7 @@ export default function ProviderEdit() {
 
   return (
     <>
-      <PageHeader title="编辑供应商" backTo="/providers" />
+      <PageHeader title="编辑供应商" backTo={`/providers/${providerId}`} />
       <PageContent>
         {provider.isPending ? (
           <FormSkeleton />
@@ -61,13 +61,14 @@ function EditProviderForm({ provider }: { provider: ProviderDetail }) {
         for (const failure of saved.harnessFailures) {
           toast.error(`未能更新 ${nameOf(failure.harnessId)}：${failure.message}`);
         }
-        navigate('/providers');
+        navigate(`/providers/${saved.id}`);
       },
     }),
   );
 
   return (
     <ProviderForm
+      cancelTo={`/providers/${provider.id}`}
       initialValues={{
         name: provider.name,
         baseUrl: provider.baseUrl,

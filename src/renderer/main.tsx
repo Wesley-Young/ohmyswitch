@@ -8,11 +8,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import App from '@/App';
 import { syncColorScheme } from '@/lib/theme';
 import { queryClient } from '@/lib/trpc';
-import Harnesses from '@/routes/harnesses';
 import NotFound from '@/routes/not-found';
+import ProviderDetail from '@/routes/provider-detail';
 import ProviderEdit from '@/routes/provider-edit';
 import ProviderNew from '@/routes/provider-new';
 import Providers from '@/routes/providers';
+import ProvidersIndex from '@/routes/providers-index';
 
 syncColorScheme();
 
@@ -26,10 +27,12 @@ createRoot(root).render(
         <Routes>
           <Route element={<App />}>
             <Route index element={<Navigate to="/providers" replace />} />
-            <Route path="providers" element={<Providers />} />
-            <Route path="providers/new" element={<ProviderNew />} />
-            <Route path="providers/:providerId" element={<ProviderEdit />} />
-            <Route path="harnesses" element={<Harnesses />} />
+            <Route path="providers" element={<Providers />}>
+              <Route index element={<ProvidersIndex />} />
+              <Route path="new" element={<ProviderNew />} />
+              <Route path=":providerId" element={<ProviderDetail />} />
+              <Route path=":providerId/edit" element={<ProviderEdit />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

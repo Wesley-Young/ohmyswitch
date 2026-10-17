@@ -3,7 +3,7 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（简称 DSH，界面上就叫这个名字）。各自的位置和路径规则在 `src/core/harness/` 中定义。
+- 支持的 Harness：OpenCode、Pi。各自的位置、路径规则和读写逻辑在 `src/core/harness/` 中定义。列表里的 Harness 都能写入，尚未接入的不列出。DeepSeek Harness（简称 DSH，界面上就叫这个名字）暂未接入，路径规则注释保留在 `dsh.ts` 中。
 - 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。主进程使用 `@fraqjs/kernel` 插件和 tRPC；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。
@@ -48,11 +48,12 @@
 - 颜色只用 `styles.css` 中定义的语义变量（`bg-background`、`text-muted-foreground`、`border` 等），不写死色值。界面以黑、白、灰为主，彩色只用来表示状态（`bg-success`、`text-destructive`）。
 - 只用系统字体，不打包字体文件。无衬线字体的顺序：Apple 系统字体 > Windows 系统字体 > 其他无衬线字体 > 其他字体；等宽字体的顺序：SF Mono > JetBrains Mono > 其他等宽字体。字体栈定义在 `styles.css` 的 `--font-sans` 和 `--font-mono` 中，组件不另设字体。
 - URL、路径、端点、版本号等机器可读的值用 `font-mono`。
-- Harness 和模型厂商的图标用 `@lobehub/icons` 的 Mono 版本（用 `currentColor` 绘制，跟随深浅色），按 `@lobehub/icons/es/<Name>/components/Mono.js` 深导入，不从包入口导入（入口会引入 antd）。通用图标用 lucide。
-- 页面由 `PageHeader`（标题、右侧主操作）和 `PageContent`（`max-w-5xl`）组成。侧边栏直达的是一级页面；从一级页面进入的是二级页面（如添加、编辑供应商），`PageHeader` 传 `backTo` 显示返回按钮，标题字号比一级页面小。列表放在细边框的 `rounded-lg` 容器里，行之间用 `divide-y` 分隔；空状态用 `Empty`；附加信息用 `Badge`，不用 `·` 拼接。
+- Harness 和模型厂商的图标用 `@lobehub/icons`：Harness 用 Mono 版本（用 `currentColor` 绘制，跟随深浅色），厂商用 Color 版本（没有 Color 版本的用 Mono）。按 `@lobehub/icons/es/<Name>/components/<Variant>.js` 深导入，不从包入口导入（入口会引入 antd）。通用图标用 lucide。
+- 布局：窗口顶部是全宽的 `TopBar`（应用名、全局操作）；下方左栏是供应商列表，右栏显示选中的供应商。以供应商为中心，Harness 只在供应商详情的「应用到」中出现，不单独成页。
+- 右栏的页面由 `PageHeader`（标题、右侧操作）和 `PageContent` 组成。供应商详情是一级页面；从它进入的是二级页面（如添加、编辑供应商），仍在右栏中打开，`PageHeader` 传 `backTo` 显示返回按钮，标题字号比一级页面小。列表放在细边框的 `rounded-lg` 容器里，行之间用 `divide-y` 分隔；空状态用 `Empty`；附加信息用 `Badge`，不用 `·` 拼接。
 - 每个页面最多一个主按钮（默认的黑底按钮），次要操作用 `outline` 或 `ghost`。
-- 添加和编辑在 `Dialog` 中进行；删除等不可恢复的操作用 `AlertDialog` 确认；操作结果用 sonner 简短提示。
-- 跟随系统的深浅色。窗口顶部是拖动区（`app-drag`），其中可交互的元素要加上 `app-no-drag`。
+- 添加和编辑供应商用二级页面，小范围的编辑和选择（如单个模型）用 `Dialog`；删除等不可恢复的操作用 `AlertDialog` 确认；操作结果用 sonner 简短提示。
+- 跟随系统的深浅色。`TopBar` 是窗口的拖动区（`app-drag`），其中可交互的元素要加上 `app-no-drag`。
 - 界面做减法。中文表意能力强，标题、标签、按钮能说清的内容，不再另加介绍文本：页面副标题、空状态说明、对话框描述、字段描述默认都不写。
 - 只有两种情况才加一句说明：帮助用户做决定（例如删除确认里说明操作的后果），或帮助用户从错误中恢复。
 
