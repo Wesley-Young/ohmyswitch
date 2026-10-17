@@ -13,6 +13,10 @@ export interface HarnessAdapter {
   write(text: string | undefined, key: string, entry: unknown): string;
   /** Keys that must not be used, such as the harness's built-in provider ids. */
   readonly reservedKeys: ReadonlySet<string>;
+  /** Whether the harness's built-in providers come from models.dev, so every catalog provider id is reserved too. */
+  readonly reservesCatalogProviders?: boolean;
+  /** Keys taken elsewhere in the config, outside the entries `readProviders` returns (such as a legacy section). */
+  occupiedKeys?(text: string | undefined): string[];
   /** Permissions for a newly created config file; existing files keep theirs. */
   readonly newFileMode: number;
 }

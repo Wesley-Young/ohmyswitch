@@ -128,13 +128,6 @@ export function ApplyMenu({
             <DropdownMenuLabel>应用到</DropdownMenuLabel>
             {harnesses.map((harness) => {
               const application = applications.find((item) => item.harnessId === harness.id);
-              const hint = !harness.supported
-                ? '暂不支持'
-                : !harness.detected && !application
-                  ? '未安装'
-                  : application
-                    ? stateLabels[application.state]
-                    : '';
               return (
                 <DropdownMenuCheckboxItem
                   key={harness.id}
@@ -148,7 +141,6 @@ export function ApplyMenu({
                 >
                   <HarnessGlyph id={harness.id} />
                   {harness.name}
-                  {hint && <span className="ml-auto pl-4 text-xs text-muted-foreground">{hint}</span>}
                 </DropdownMenuCheckboxItem>
               );
             })}

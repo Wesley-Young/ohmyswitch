@@ -4,8 +4,8 @@ import { AppError } from '../../../core/errors.ts';
 import { type CatalogFetch, fetchModelCatalog } from '../../../core/model-catalog.ts';
 import type { ModelInfo, StoredProvider } from '../../../core/provider.ts';
 import type { HarnessService } from '../harnesses/service.ts';
+import type { ModelsDevService } from '../models-dev/service.ts';
 import type { StoreService } from '../store/service.ts';
-import type { ModelsDevCatalog } from './models-dev.ts';
 import type { CreateProviderInput, ProviderSourceInput, SyncModelsInput, UpdateProviderInput } from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
@@ -28,14 +28,14 @@ export class ProviderService {
   private readonly store: StoreService;
   private readonly harnesses: HarnessService;
   private readonly fetch: CatalogFetch;
-  private readonly modelsDev: ModelsDevCatalog;
+  private readonly modelsDev: ModelsDevService;
   private readonly logger: Logger;
 
   constructor(
     store: StoreService,
     harnesses: HarnessService,
     fetch: CatalogFetch,
-    modelsDev: ModelsDevCatalog,
+    modelsDev: ModelsDevService,
     logger: Logger,
   ) {
     this.store = store;

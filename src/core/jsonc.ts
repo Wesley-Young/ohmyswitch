@@ -42,3 +42,16 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
   }
   return a === b;
 }
+
+/**
+ * A copy of `target` with each owned field set from `values`, or deleted when its value is undefined. Fields
+ * not listed are kept, and existing keys keep their position.
+ */
+export function withOwnedFields(target: unknown, owned: readonly string[], values: JsonObject): JsonObject {
+  const result: JsonObject = isJsonObject(target) ? { ...target } : {};
+  for (const field of owned) {
+    if (values[field] === undefined) delete result[field];
+    else result[field] = values[field];
+  }
+  return result;
+}

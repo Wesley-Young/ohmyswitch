@@ -1,4 +1,4 @@
-import type { Logger } from '@fraqjs/kernel';
+import { type Logger, serviceToken } from '@fraqjs/kernel';
 import { z } from 'zod';
 
 import { writeFileAtomic } from '../../../core/atomic-file.ts';
@@ -28,7 +28,8 @@ interface Snapshot {
  * The models.dev catalog, reduced and cached on disk for a day. When a refresh fails, a stale copy is used;
  * only a failure with no copy at all is an error.
  */
-export class ModelsDevCatalog {
+export class ModelsDevService {
+  static readonly token = serviceToken<ModelsDevService>('ohmyswitch/models-dev');
   private readonly path: string;
   private readonly fetch: CatalogFetch;
   private readonly logger: Logger;

@@ -114,8 +114,11 @@ export function parseModelsDev(raw: unknown): CatalogEntry[] {
 export class ModelsDevIndex {
   private readonly exact = new Map<string, CatalogEntry[]>();
   private readonly bySegment = new Map<string, CatalogEntry[]>();
+  /** Every provider id in the catalog. Harnesses that build on models.dev treat these as built-in providers. */
+  readonly providerIds: ReadonlySet<string>;
 
   constructor(entries: readonly CatalogEntry[]) {
+    this.providerIds = new Set(entries.map((entry) => entry.providerId));
     const sorted = [...entries].sort((a, b) => a.providerId.localeCompare(b.providerId));
     for (const entry of sorted) {
       push(this.exact, entry.id.toLowerCase(), entry);

@@ -12,6 +12,7 @@ import {
 } from '../../../core/harness/index.ts';
 import { jsonEqual } from '../../../core/jsonc.ts';
 import type { StoredProvider } from '../../../core/provider.ts';
+import type { ModelsDevService } from '../models-dev/service.ts';
 import type { StoreService } from '../store/service.ts';
 
 import { readFile, stat } from 'node:fs/promises';
@@ -49,12 +50,14 @@ export class HarnessService {
   static readonly token = serviceToken<HarnessService>('ohmyswitch/harnesses');
   private readonly environment: HarnessEnvironment;
   private readonly store: StoreService;
+  private readonly modelsDev: ModelsDevService;
   /** Edits to the same config file run one after another. */
   private readonly queues = new Map<string, Promise<unknown>>();
 
-  constructor(environment: HarnessEnvironment, store: StoreService) {
+  constructor(environment: HarnessEnvironment, store: StoreService, modelsDev: ModelsDevService) {
     this.environment = environment;
     this.store = store;
+    this.modelsDev = modelsDev;
   }
 
   /** Each harness, whether it is present on this machine, whether ohmyswitch can write to it, and its config file. */
@@ -115,10 +118,19 @@ export class HarnessService {
       this.store.data.providers.flatMap((item) => (item.id === provider.id ? [] : [item.harnesses[harnessId]?.key])),
     );
     let key = provider.harnesses[harnessId]?.key;
+    const catalog = !key && adapter.reservesCatalogProviders ? await this.catalogProviderIds(harness) : new Set();
     await this.edit(harness, (text) => {
       const entries = adapter.readProviders(text);
       if (!key) {
-        key = providerKey(provider.name, (candidate) => owned.has(candidate) || adapter.reservedKeys.has(candidate));
+        const occupied = new Set(adapter.occupiedKeys?.(text));
+        key = providerKey(
+          provider.name,
+          (candidate) =>
+            owned.has(candidate) ||
+            adapter.reservedKeys.has(candidate) ||
+            catalog.has(candidate) ||
+            occupied.has(candidate),
+        );
         if (entries[key] !== undefined && !replace) {
           throw new AppError('conflict', `${harness.name} 中已有「${key}」`);
         }
@@ -212,6 +224,17 @@ export class HarnessService {
       current.catch(() => {}),
     );
     return current;
+  }
+
+  /** Built-in provider ids of a harness that builds on models.dev. Without the catalog, no new key is assigned. */
+  private async catalogProviderIds(harness: HarnessDescriptor) {
+    try {
+      return (await this.modelsDev.index()).providerIds;
+    } catch (error) {
+      throw new AppError('bad_gateway', `无法读取 models.dev，暂时不能确认 ${harness.name} 的内置供应商，请稍后重试`, {
+        cause: error,
+      });
+    }
   }
 
   private applied(provider: StoredProvider) {

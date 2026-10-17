@@ -1,6 +1,6 @@
 import type { Endpoint } from '../endpoints.ts';
 import { AppError } from '../errors.ts';
-import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue } from '../jsonc.ts';
+import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue, withOwnedFields } from '../jsonc.ts';
 import type { ModelInfo, StoredProvider } from '../provider.ts';
 import type { HarnessAdapter } from './adapter.ts';
 
@@ -105,20 +105,11 @@ export function piThinkingLevelMap(model: ModelInfo): Record<string, string | nu
 const ownedModelFields = ['id', 'name', 'reasoning', 'thinkingLevelMap', 'input', 'contextWindow', 'maxTokens'];
 const ownedCompatFields = ['forceAdaptiveThinking', 'requiresReasoningContentOnAssistantMessages'];
 
-/** Set owned fields on `target`, deleting the ones that are undefined. Untouched keys keep their position. */
-function assignOwned(target: JsonObject, owned: readonly string[], values: JsonObject) {
-  for (const field of owned) {
-    if (values[field] === undefined) delete target[field];
-    else target[field] = values[field];
-  }
-  return target;
-}
-
 function piModel(model: ModelInfo, api: PiApi, existing: unknown): JsonObject {
   const efforts = model.reasoningOptions?.some((option) => option.type === 'effort');
   const interleavedField = typeof model.interleaved === 'object' ? model.interleaved.field : undefined;
   const input = model.input?.filter((kind) => kind === 'text' || kind === 'image');
-  const target = assignOwned(isJsonObject(existing) ? { ...existing } : {}, ownedModelFields, {
+  const target = withOwnedFields(existing, ownedModelFields, {
     id: model.id,
     name: model.name,
     reasoning: model.reasoning,
@@ -127,7 +118,7 @@ function piModel(model: ModelInfo, api: PiApi, existing: unknown): JsonObject {
     contextWindow: model.contextWindow,
     maxTokens: model.maxOutput,
   });
-  const compat = assignOwned(isJsonObject(target.compat) ? { ...target.compat } : {}, ownedCompatFields, {
+  const compat = withOwnedFields(target.compat, ownedCompatFields, {
     forceAdaptiveThinking: api === 'anthropic-messages' && model.reasoning && efforts ? true : undefined,
     requiresReasoningContentOnAssistantMessages:
       api === 'openai-completions' && model.reasoning && interleavedField === 'reasoning_content' ? true : undefined,
@@ -145,7 +136,7 @@ function piProviderEntry(provider: StoredProvider, existing: unknown): JsonObjec
       .filter(isJsonObject)
       .map((model) => [model.id, model] as const),
   );
-  return assignOwned({ ...previous }, ['name', 'baseUrl', 'api', 'apiKey', 'models'], {
+  return withOwnedFields(previous, ['name', 'baseUrl', 'api', 'apiKey', 'models'], {
     name: provider.name,
     baseUrl: `${provider.baseUrl}${path}`,
     api,
