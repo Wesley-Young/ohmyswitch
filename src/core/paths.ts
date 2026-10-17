@@ -16,6 +16,8 @@ export interface AppDirs {
   cache: string;
   /** Runtime state that is neither: Electron's userData. */
   state: string;
+  /** `ohmyswitch.log` and the previous one. */
+  logs: string;
 }
 
 const name = 'ohmyswitch';
@@ -32,6 +34,7 @@ export function appDirs(home: string, env: Readonly<Record<string, string | unde
       data: join(root, 'data'),
       cache: join(root, 'cache'),
       state: join(root, 'state'),
+      logs: join(root, 'state', 'logs'),
     };
   }
   if (platform === 'darwin') {
@@ -41,19 +44,22 @@ export function appDirs(home: string, env: Readonly<Record<string, string | unde
       data: support,
       cache: join(home, 'Library', 'Caches', name),
       state: support,
+      logs: join(home, 'Library', 'Logs', name),
     };
   }
   if (platform === 'win32') {
     const roaming = join(resolveDirOverride(home, env.APPDATA) ?? join(home, 'AppData', 'Roaming'), name);
     const local = join(resolveDirOverride(home, env.LOCALAPPDATA) ?? join(home, 'AppData', 'Local'), name);
-    return { config: roaming, data: roaming, cache: join(local, 'Cache'), state: local };
+    return { config: roaming, data: roaming, cache: join(local, 'Cache'), state: local, logs: join(local, 'Logs') };
   }
   const xdg = (variable: string, fallback: string) =>
     join(resolveDirOverride(home, env[variable]) ?? join(home, fallback), name);
+  const state = xdg('XDG_STATE_HOME', join('.local', 'state'));
   return {
     config: xdg('XDG_CONFIG_HOME', '.config'),
     data: xdg('XDG_DATA_HOME', join('.local', 'share')),
     cache: xdg('XDG_CACHE_HOME', '.cache'),
-    state: xdg('XDG_STATE_HOME', join('.local', 'state')),
+    state,
+    logs: join(state, 'logs'),
   };
 }

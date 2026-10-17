@@ -6,7 +6,7 @@ import { findLink, linkScheme } from '#core/deep-links/link.ts';
 import type { DeepLinkService } from '#core/deep-links/service.ts';
 import { App } from './app.ts';
 import { type AppConfig, applyUserDataPath, loadConfig } from './config.ts';
-import { logError, logExporter } from './logging.ts';
+import { logError, logExporter, openLogFile } from './logging.ts';
 import { registerAppScheme } from './plugins/protocol/scheme.ts';
 import type { WindowService } from './plugins/window/service.ts';
 
@@ -67,6 +67,7 @@ const Main = {
 
 async function start() {
   const config = loadConfig();
+  openLogFile(config.dirs.logs);
   await app.whenReady();
   const root = new Context();
   root.logger.exporter(logExporter);

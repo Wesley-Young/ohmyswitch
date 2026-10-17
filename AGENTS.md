@@ -26,8 +26,9 @@
   | data | `store.json` | `$XDG_DATA_HOME/ohmyswitch` | 同上 | `%APPDATA%\ohmyswitch` |
   | cache | models.dev、图标，删掉会重新获取 | `$XDG_CACHE_HOME/ohmyswitch` | `~/Library/Caches/ohmyswitch` | `%LOCALAPPDATA%\ohmyswitch\Cache` |
   | state | `electron/`（Electron 的 userData：Chromium 状态和单实例锁） | `$XDG_STATE_HOME/ohmyswitch` | `~/Library/Application Support/ohmyswitch` | `%LOCALAPPDATA%\ohmyswitch` |
+  | logs | `ohmyswitch.log`，超过 5 MB 时轮转为 `ohmyswitch.old.log` | `$XDG_STATE_HOME/ohmyswitch/logs` | `~/Library/Logs/ohmyswitch` | `%LOCALAPPDATA%\ohmyswitch\Logs` |
 
-- 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，各类目录都放到它下面的 `config/`、`data/`、`cache/`、`state/` 中，同时隔离 userData 和单实例锁，不影响已安装的应用。
+- 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，各类目录都放到它下面的 `config/`、`data/`、`cache/`、`state/`（日志在 `state/logs/`）中，同时隔离 userData 和单实例锁，不影响已安装的应用。
 
 ## 插件
 
@@ -56,6 +57,7 @@
 ## 主进程
 
 - 渲染进程和 RPC 都由 `app://ohmyswitch` 提供（`plugins/protocol` 的 `AppProtocol`）：`/api/trpc` 交给 tRPC 的 fetch 适配器，其余路径是界面资源，开发时代理到 Vite dev server。不使用 preload 和 `ipcMain`，新增能力一律写成 tRPC 过程。
+- 日志统一经 cordis 的 logger 输出，`main/logging.ts` 的 exporter 交给 electron-log 写到 console 和 logs 目录中的日志文件（用它的 `electron-log/node` 入口，`electron-log/main` 会注册 `ipcMain`）；插件树之外的进程级错误用 `logError`。日志文件只由持有单实例锁的进程打开。
 - 主窗口是 `plugins/window` 的 `WindowService`。`index.ts` 只在 `activate`、`second-instance` 和收到链接时调用它。
 - 主进程需要主动通知界面时用 tRPC subscription（SSE，见 `deepLinks.events`），不用 IPC。
 
