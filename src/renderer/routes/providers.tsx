@@ -83,7 +83,10 @@ function ProviderRow({ provider, onDelete }: { provider: Provider; onDelete: () 
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{provider.name}</div>
-        <div className="truncate font-mono text-xs text-muted-foreground">{provider.accessPoints[0]?.baseUrl}</div>
+        <div className="truncate font-mono text-xs text-muted-foreground">
+          {provider.accessPoints[0]?.baseUrl}
+          <span className="text-foreground">{provider.endpoint}</span>
+        </div>
       </div>
       <div className="hidden shrink-0 gap-1 md:flex">
         {provider.modelCount > 0 && (
