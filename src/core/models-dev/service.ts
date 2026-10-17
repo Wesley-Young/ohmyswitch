@@ -1,10 +1,10 @@
 import { type Context, type Logger, Service } from 'cordis';
 import { z } from 'zod';
 
-import { writeFileAtomic } from '../atomic-file.ts';
-import { AppError } from '../errors.ts';
-import { readLimitedText } from '../http/fetch.ts';
-import type {} from '../http/service.ts';
+import { writeFileAtomic } from '#core/atomic-file.ts';
+import { AppError } from '#core/errors.ts';
+import { readLimitedText } from '#core/http/fetch.ts';
+import type {} from '#core/http/service.ts';
 import { catalogEntry, ModelsDevIndex, modelsDevUrl, parseModelsDev } from './catalog.ts';
 
 import { readFile } from 'node:fs/promises';

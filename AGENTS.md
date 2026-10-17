@@ -17,7 +17,7 @@
 - `src/main/`：Electron 主进程，只做组装和 Electron 专用的部分。`index.ts` 只管进程级生命周期（单实例锁、启动、退出、接收 `ohmyswitch://` 链接）；`app.ts` 把 core 的插件和 `plugins/` 中的插件组装起来，是唯一的组装入口（Harness 插件作为 `PluginService` 的内置插件传入，由它加载）；`plugins/` 只放 Electron 专用插件（`http`、`protocol`、`window`）；`trpc/` 是 RPC 层，`routes/` 下每个模块一个文件，由 `router.ts` 汇总。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
-- `src/core`、`src/main` 中的相对导入写 `.ts` 后缀；渲染进程用 `@/` 别名，不写后缀。
+- `src/core`、`src/main` 中只有同目录的文件用相对导入（`./x.ts`），离开当前目录就用 `package.json` 的 subpath imports：`#core/*`、`#main/*`、`#build/*`（窗口图标等构建资源），都写 `.ts` 后缀，不写 `../`。渲染进程用 `@/` 别名，不写后缀。
 - ohmyswitch 的数据目录是 `~/.ohmyswitch`（`store.json`、`plugins.yml`、`plugins.patch.yml`、`cache/`），由 `core/paths.ts` 决定，GUI 和以后的 CLI/TUI 共用。Electron 的 userData 只放 Chromium 状态和单实例锁。
 - 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，它会同时隔离数据目录、userData 和单实例锁，不影响已安装的应用。
 
@@ -27,7 +27,7 @@
 - 模块 `core/<name>/` 的文件分工：`service.ts` 是主 service，命名为 `XxxService`，继承 cordis 的 `Service`，它本身就是插件；`schemas.ts` 是 service 的输入校验，RPC 和以后的 CLI 共用；只有不是单个 service 的插件（如 Harness 插件）才需要 `index.ts`；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
 - service 的写法：
   - 构造函数是 `(ctx, options)`，调用 `super(ctx, '<name>')` 注册为 `ctx.<name>`，并用 `declare module 'cordis' { interface Context { <name>: XxxService } }` 声明类型。
-  - 依赖写在 `static inject`，方法里通过 `this.ctx.<name>` 使用；core 的 service 依赖其他模块的服务时，按 `inject` 逐个 `import type {} from '../<module>/service.ts'`：界面的类型检查只沿导入链看到 core，缺了它们，推导出的返回类型会丢失。已经具名导入了 service 类型的文件（如 `main/trpc/router.ts` 和引用它的插件）不用再写。日志用构造函数里创建的 `ctx.logger('<name>')`。
+  - 依赖写在 `static inject`，方法里通过 `this.ctx.<name>` 使用；core 的 service 依赖其他模块的服务时，按 `inject` 逐个 `import type {} from '#core/<module>/service.ts'`：界面的类型检查只沿导入链看到 core，缺了它们，推导出的返回类型会丢失。已经具名导入了 service 类型的文件（如 `main/trpc/router.ts` 和引用它的插件）不用再写。日志用构造函数里创建的 `ctx.logger('<name>')`。
   - 插件参数用 zod 定义为 `static Config`，同时导出 `XxxOptions` 类型。
   - 不用 `#private` 字段：cordis 通过 Proxy 访问 service，`#private` 在 Proxy 上不可用。
 - 加载时的异步准备、对外的副作用（处理 `app://` 请求、打开窗口）和资源释放写在 `[Service.init]()` 里：返回或 yield 的函数就是清理逻辑。执行顺序由 `inject` 决定，不手动安排。

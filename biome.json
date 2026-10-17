@@ -84,6 +84,7 @@
                   {
                     "group": [
                       "**/main/**",
+                      "#main/**",
                       "**/renderer/**",
                       "react",
                       "react-dom"
@@ -116,6 +117,7 @@
                   {
                     "group": [
                       "**/main/**",
+                      "#main/**",
                       "**/renderer/**",
                       "react",
                       "react-dom"
@@ -170,7 +172,12 @@
                     "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
                   },
                   {
-                    "group": ["**/main/**", "**/core/**"],
+                    "group": [
+                      "**/main/**",
+                      "**/core/**",
+                      "#main/**",
+                      "#core/**"
+                    ],
                     "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
                   }
                 ]
@@ -197,7 +204,12 @@
                     "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
                   },
                   {
-                    "group": ["**/main/**", "**/core/**"],
+                    "group": [
+                      "**/main/**",
+                      "**/core/**",
+                      "#main/**",
+                      "#core/**"
+                    ],
                     "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
                   },
                   {
@@ -228,7 +240,12 @@
                     "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
                   },
                   {
-                    "group": ["**/main/**", "**/core/**"],
+                    "group": [
+                      "**/main/**",
+                      "**/core/**",
+                      "#main/**",
+                      "#core/**"
+                    ],
                     "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
                   },
                   {
@@ -259,7 +276,12 @@
                     "message": "渲染进程运行在沙箱中，不使用 Node 模块。"
                   },
                   {
-                    "group": ["**/main/**", "**/core/**"],
+                    "group": [
+                      "**/main/**",
+                      "**/core/**",
+                      "#main/**",
+                      "#core/**"
+                    ],
                     "message": "只有 lib/trpc.ts 引用主进程的类型；其他界面代码从 @/lib/trpc 导入。"
                   },
                   {

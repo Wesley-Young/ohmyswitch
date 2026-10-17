@@ -1,11 +1,6 @@
-import {
-  createProviderInput,
-  providerIdInput,
-  setModelsInput,
-  updateProviderInput,
-} from '../../../core/providers/schemas.ts';
-import type { ProviderService } from '../../../core/providers/service.ts';
-import { publicProcedure } from '../procedures.ts';
+import { createProviderInput, providerIdInput, setModelsInput, updateProviderInput } from '#core/providers/schemas.ts';
+import type { ProviderService } from '#core/providers/service.ts';
+import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function providerRoutes(providers: ProviderService) {
   return {

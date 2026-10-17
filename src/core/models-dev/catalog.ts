@@ -7,7 +7,7 @@ import {
   type ReasoningOption,
   reasoningEffort,
   reasoningOption,
-} from '../provider.ts';
+} from '#core/provider.ts';
 
 /** Where models.dev publishes its catalog. */
 export const modelsDevUrl = 'https://models.dev/api.json';

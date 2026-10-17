@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { Endpoint } from '../endpoints.ts';
+import type { Endpoint } from '#core/endpoints.ts';
 import type { HarnessAdapter } from './adapter.ts';
 
 /**

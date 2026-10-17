@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { endpoints } from '../endpoints.ts';
-import { baseUrl, iconUrl, modelInfo, providerName } from '../provider.ts';
+import { endpoints } from '#core/endpoints.ts';
+import { baseUrl, iconUrl, modelInfo, providerName } from '#core/provider.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
 

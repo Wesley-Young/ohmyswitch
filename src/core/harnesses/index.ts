@@ -1,6 +1,6 @@
 import type { Context } from 'cordis';
 
-import type { ManagedPlugin } from '../plugins/service.ts';
+import type { ManagedPlugin } from '#core/plugins/service.ts';
 import type { HarnessDescriptor } from './types.ts';
 
 /**

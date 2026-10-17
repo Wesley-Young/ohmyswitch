@@ -1,8 +1,8 @@
 import { tracked } from '@trpc/server';
 
-import { setEnabledInput } from '../../../core/plugins/schemas.ts';
-import type { PluginService } from '../../../core/plugins/service.ts';
-import { publicProcedure } from '../procedures.ts';
+import { setEnabledInput } from '#core/plugins/schemas.ts';
+import type { PluginService } from '#core/plugins/service.ts';
+import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function pluginRoutes(plugins: PluginService) {
   return {

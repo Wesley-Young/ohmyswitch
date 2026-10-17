@@ -1,4 +1,4 @@
-import type { StoredProvider } from '../provider.ts';
+import type { StoredProvider } from '#core/provider.ts';
 
 /**
  * Reads and writes the provider entries ohmyswitch owns in one harness config file. Pure text in, text out;

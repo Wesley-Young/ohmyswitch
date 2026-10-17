@@ -2,7 +2,7 @@ import { initTRPC, type TRPC_ERROR_CODE_KEY, TRPCError } from '@trpc/server';
 import type { Logger } from 'cordis';
 import { z } from 'zod';
 
-import { AppError, type AppErrorKind } from '../../core/errors.ts';
+import { AppError, type AppErrorKind } from '#core/errors.ts';
 
 export interface RpcContext {
   logger: Logger;

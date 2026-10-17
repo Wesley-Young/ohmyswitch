@@ -1,8 +1,8 @@
 import { type Context, Service } from 'cordis';
 import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 
-import icon from '../../../../build/icon.png?asset';
-import macIcon from '../../../../build/icon-mac.png?asset';
+import icon from '#build/icon.png?asset';
+import macIcon from '#build/icon-mac.png?asset';
 
 declare module 'cordis' {
   interface Context {

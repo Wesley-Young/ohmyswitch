@@ -1,6 +1,6 @@
-import { applicationInput, applyInput } from '../../../core/harnesses/schemas.ts';
-import type { HarnessService } from '../../../core/harnesses/service.ts';
-import { publicProcedure } from '../procedures.ts';
+import { applicationInput, applyInput } from '#core/harnesses/schemas.ts';
+import type { HarnessService } from '#core/harnesses/service.ts';
+import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function harnessRoutes(harnesses: HarnessService) {
   return {

@@ -1,11 +1,11 @@
 import { type Context, type Logger, Service } from 'cordis';
 import { z } from 'zod';
 
-import { writeFileAtomic } from '../atomic-file.ts';
-import { AppError } from '../errors.ts';
-import type {} from '../http/service.ts';
-import type { StoredProvider } from '../provider.ts';
-import type {} from '../store/service.ts';
+import { writeFileAtomic } from '#core/atomic-file.ts';
+import { AppError } from '#core/errors.ts';
+import type {} from '#core/http/service.ts';
+import type { StoredProvider } from '#core/provider.ts';
+import type {} from '#core/store/service.ts';
 import { discoverIcon, iconTypes } from './discover.ts';
 
 import { readFile, rm } from 'node:fs/promises';

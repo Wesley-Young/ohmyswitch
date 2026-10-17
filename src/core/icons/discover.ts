@@ -1,5 +1,5 @@
-import { AppError } from '../errors.ts';
-import type { Fetch } from '../http/fetch.ts';
+import { AppError } from '#core/errors.ts';
+import type { Fetch } from '#core/http/fetch.ts';
 
 /** Image formats an icon may be stored in, identified by their content rather than the server's claim. */
 export const iconTypes = [

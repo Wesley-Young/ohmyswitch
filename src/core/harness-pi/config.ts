@@ -1,8 +1,8 @@
-import type { Endpoint } from '../endpoints.ts';
-import { AppError } from '../errors.ts';
-import type { HarnessAdapter } from '../harnesses/adapter.ts';
-import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue, withOwnedFields } from '../jsonc.ts';
-import type { ModelInfo, StoredProvider } from '../provider.ts';
+import type { Endpoint } from '#core/endpoints.ts';
+import { AppError } from '#core/errors.ts';
+import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
+import { isJsonObject, type JsonObject, parseJsonc, setJsoncValue, withOwnedFields } from '#core/jsonc.ts';
+import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 
 /**
  * Pi's `models.json`. The contract — which fields ohmyswitch owns and how they are derived — is documented in

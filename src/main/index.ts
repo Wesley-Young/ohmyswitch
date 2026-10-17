@@ -1,9 +1,9 @@
 import { Context, type Fiber } from 'cordis';
 import { app, dialog } from 'electron';
 
-import { FiberState } from '../core/cordis.ts';
-import { findLink, linkScheme } from '../core/deep-links/link.ts';
-import type { DeepLinkService } from '../core/deep-links/service.ts';
+import { FiberState } from '#core/cordis.ts';
+import { findLink, linkScheme } from '#core/deep-links/link.ts';
+import type { DeepLinkService } from '#core/deep-links/service.ts';
 import { App } from './app.ts';
 import { type AppConfig, applyUserDataOverride, loadConfig } from './config.ts';
 import { logError, logExporter } from './logging.ts';

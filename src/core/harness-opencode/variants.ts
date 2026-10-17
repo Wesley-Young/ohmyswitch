@@ -1,4 +1,4 @@
-import type { ModelInfo, ReasoningOption } from '../provider.ts';
+import type { ModelInfo, ReasoningOption } from '#core/provider.ts';
 
 /**
  * OpenCode's reasoning variants for a model, ported from `Variant.resolve` in OpenCode v2.0.27

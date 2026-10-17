@@ -1,8 +1,8 @@
 import { tracked } from '@trpc/server';
 
-import { eventsInput, pendingImportInput } from '../../../core/deep-links/schemas.ts';
-import type { DeepLinkService } from '../../../core/deep-links/service.ts';
-import { publicProcedure } from '../procedures.ts';
+import { eventsInput, pendingImportInput } from '#core/deep-links/schemas.ts';
+import type { DeepLinkService } from '#core/deep-links/service.ts';
+import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function deepLinkRoutes(deepLinks: DeepLinkService) {
   return {

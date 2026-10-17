@@ -1,12 +1,12 @@
 import { type Context, type Logger, Service } from 'cordis';
 
-import { AppError } from '../errors.ts';
-import type {} from '../harnesses/service.ts';
-import type {} from '../http/service.ts';
-import type {} from '../icons/service.ts';
-import type {} from '../models-dev/service.ts';
-import type { ModelInfo, StoredProvider } from '../provider.ts';
-import type {} from '../store/service.ts';
+import { AppError } from '#core/errors.ts';
+import type {} from '#core/harnesses/service.ts';
+import type {} from '#core/http/service.ts';
+import type {} from '#core/icons/service.ts';
+import type {} from '#core/models-dev/service.ts';
+import type { ModelInfo, StoredProvider } from '#core/provider.ts';
+import type {} from '#core/store/service.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
 import type { CreateProviderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
 

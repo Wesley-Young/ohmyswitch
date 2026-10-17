@@ -1,10 +1,10 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 
-import type { DeepLinkService } from '../../core/deep-links/service.ts';
-import type { HarnessService } from '../../core/harnesses/service.ts';
-import type { IconService } from '../../core/icons/service.ts';
-import type { PluginService } from '../../core/plugins/service.ts';
-import type { ProviderService } from '../../core/providers/service.ts';
+import type { DeepLinkService } from '#core/deep-links/service.ts';
+import type { HarnessService } from '#core/harnesses/service.ts';
+import type { IconService } from '#core/icons/service.ts';
+import type { PluginService } from '#core/plugins/service.ts';
+import type { ProviderService } from '#core/providers/service.ts';
 import { publicProcedure, router } from './procedures.ts';
 import { deepLinkRoutes } from './routes/deep-links.ts';
 import { harnessRoutes } from './routes/harnesses.ts';

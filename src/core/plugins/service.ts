@@ -3,9 +3,9 @@ import type { EntryOptions } from '@cordisjs/plugin-loader';
 import { type Context, type Fiber, type Logger, type Plugin, Service } from 'cordis';
 import { load } from 'js-yaml';
 
-import { FiberState } from '../cordis.ts';
-import { AppError } from '../errors.ts';
-import { readTextIfExists } from '../files.ts';
+import { FiberState } from '#core/cordis.ts';
+import { AppError } from '#core/errors.ts';
+import { readTextIfExists } from '#core/files.ts';
 
 import { EventEmitter, on } from 'node:events';
 import { watch } from 'node:fs';

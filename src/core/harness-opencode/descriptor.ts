@@ -1,5 +1,5 @@
-import { firstExisting } from '../files.ts';
-import type { HarnessDescriptor, HarnessEnvironment } from '../harnesses/types.ts';
+import { firstExisting } from '#core/files.ts';
+import type { HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
 import { openCodeAdapter } from './config.ts';
 
 import { isAbsolute, join } from 'node:path';

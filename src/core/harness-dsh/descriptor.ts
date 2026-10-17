@@ -1,8 +1,8 @@
-import { AppError } from '../errors.ts';
-import { isDirectory, readTextIfExists } from '../files.ts';
-import type { HarnessConfigFile, HarnessDescriptor, HarnessEnvironment } from '../harnesses/types.ts';
-import { isJsonObject } from '../jsonc.ts';
-import { resolveDirOverride } from '../paths.ts';
+import { AppError } from '#core/errors.ts';
+import { isDirectory, readTextIfExists } from '#core/files.ts';
+import type { HarnessConfigFile, HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
+import { isJsonObject } from '#core/jsonc.ts';
+import { resolveDirOverride } from '#core/paths.ts';
 import { dshCredentialsAdapter, dshPatchAdapter, dshUnsupportedEndpoints, patchSetsProviders } from './config.ts';
 
 import { readdir } from 'node:fs/promises';

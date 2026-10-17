@@ -1,6 +1,6 @@
-import type { IconService } from '../../../core/icons/service.ts';
-import { providerIdInput } from '../../../core/providers/schemas.ts';
-import { publicProcedure } from '../procedures.ts';
+import type { IconService } from '#core/icons/service.ts';
+import { providerIdInput } from '#core/providers/schemas.ts';
+import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function iconRoutes(icons: IconService) {
   return {

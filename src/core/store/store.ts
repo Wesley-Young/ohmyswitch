@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { writeFileAtomic } from '../atomic-file.ts';
-import { storedProvider } from '../provider.ts';
+import { writeFileAtomic } from '#core/atomic-file.ts';
+import { storedProvider } from '#core/provider.ts';
 
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';

@@ -6,6 +6,11 @@
   "description": "Provider-first config manager for AI coding harnesses",
   "type": "module",
   "main": "out/main/index.js",
+  "imports": {
+    "#core/*": "./src/core/*",
+    "#main/*": "./src/main/*",
+    "#build/*": "./build/*"
+  },
   "packageManager": "pnpm@12.4.2",
   "engines": {
     "node": ">=24.13.0",

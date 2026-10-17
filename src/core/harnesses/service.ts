@@ -1,11 +1,11 @@
 import { type Context, Service } from 'cordis';
 import { z } from 'zod';
 
-import { AppError } from '../errors.ts';
-import { isDirectory } from '../files.ts';
-import type {} from '../models-dev/service.ts';
-import type { StoredProvider } from '../provider.ts';
-import type {} from '../store/service.ts';
+import { AppError } from '#core/errors.ts';
+import { isDirectory } from '#core/files.ts';
+import type {} from '#core/models-dev/service.ts';
+import type { StoredProvider } from '#core/provider.ts';
+import type {} from '#core/store/service.ts';
 import { type ApplicationState, assertWritable, chooseKey, entryState, worseState } from './applications.ts';
 import { ConfigEditor, readConfigText } from './editor.ts';
 import {

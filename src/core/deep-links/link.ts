@@ -1,5 +1,5 @@
-import { type Endpoint, endpoints } from '../endpoints.ts';
-import { baseUrl } from '../provider.ts';
+import { type Endpoint, endpoints } from '#core/endpoints.ts';
+import { baseUrl } from '#core/provider.ts';
 
 /** The URL scheme ohmyswitch registers with the operating system. */
 export const linkScheme = 'ohmyswitch';

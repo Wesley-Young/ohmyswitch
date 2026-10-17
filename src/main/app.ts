@@ -1,16 +1,16 @@
 import { Loader } from '@cordisjs/plugin-loader';
 import type { Context } from 'cordis';
 
-import { DeepLinkService } from '../core/deep-links/service.ts';
-import { DshHarnessPlugin } from '../core/harness-dsh/index.ts';
-import { OpenCodeHarnessPlugin } from '../core/harness-opencode/index.ts';
-import { PiHarnessPlugin } from '../core/harness-pi/index.ts';
-import { HarnessService } from '../core/harnesses/service.ts';
-import { IconService } from '../core/icons/service.ts';
-import { ModelsDevService } from '../core/models-dev/service.ts';
-import { PluginService } from '../core/plugins/service.ts';
-import { ProviderService } from '../core/providers/service.ts';
-import { StoreService } from '../core/store/service.ts';
+import { DeepLinkService } from '#core/deep-links/service.ts';
+import { DshHarnessPlugin } from '#core/harness-dsh/index.ts';
+import { OpenCodeHarnessPlugin } from '#core/harness-opencode/index.ts';
+import { PiHarnessPlugin } from '#core/harness-pi/index.ts';
+import { HarnessService } from '#core/harnesses/service.ts';
+import { IconService } from '#core/icons/service.ts';
+import { ModelsDevService } from '#core/models-dev/service.ts';
+import { PluginService } from '#core/plugins/service.ts';
+import { ProviderService } from '#core/providers/service.ts';
+import { StoreService } from '#core/store/service.ts';
 import type { AppConfig } from './config.ts';
 import { ElectronHttpService } from './plugins/http/service.ts';
 import { AppProtocol } from './plugins/protocol/service.ts';

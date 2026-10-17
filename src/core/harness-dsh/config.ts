@@ -11,11 +11,11 @@ import {
   YAMLSeq,
 } from 'yaml';
 
-import type { Endpoint } from '../endpoints.ts';
-import { AppError } from '../errors.ts';
-import type { HarnessAdapter } from '../harnesses/adapter.ts';
-import { isJsonObject, type JsonObject, withOwnedFields } from '../jsonc.ts';
-import type { ModelInfo, StoredProvider } from '../provider.ts';
+import type { Endpoint } from '#core/endpoints.ts';
+import { AppError } from '#core/errors.ts';
+import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
+import { isJsonObject, type JsonObject, withOwnedFields } from '#core/jsonc.ts';
+import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 
 /**
  * DeepSeek Harness: providers in the `llm-pi-ai` entry of each profile's `cordis.patch.yml`, API keys in

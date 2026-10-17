@@ -1,7 +1,7 @@
-import { writeFileAtomic } from '../atomic-file.ts';
-import { AppError } from '../errors.ts';
-import { withFileLock } from '../file-lock.ts';
-import { readTextIfExists } from '../files.ts';
+import { writeFileAtomic } from '#core/atomic-file.ts';
+import { AppError } from '#core/errors.ts';
+import { withFileLock } from '#core/file-lock.ts';
+import { readTextIfExists } from '#core/files.ts';
 import type { HarnessConfigFile } from './types.ts';
 
 import { stat } from 'node:fs/promises';

@@ -1,6 +1,6 @@
 import { app } from 'electron';
 
-import { ohmyswitchHome, resolveDirOverride } from '../core/paths.ts';
+import { ohmyswitchHome, resolveDirOverride } from '#core/paths.ts';
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';

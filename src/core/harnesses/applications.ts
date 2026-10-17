@@ -1,5 +1,5 @@
-import { jsonEqual } from '../jsonc.ts';
-import type { StoredProvider } from '../provider.ts';
+import { jsonEqual } from '#core/jsonc.ts';
+import type { StoredProvider } from '#core/provider.ts';
 import { providerKey } from './adapter.ts';
 import type { HarnessConfigFile } from './types.ts';
 

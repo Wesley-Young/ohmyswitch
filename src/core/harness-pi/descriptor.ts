@@ -1,5 +1,5 @@
-import type { HarnessDescriptor, HarnessEnvironment } from '../harnesses/types.ts';
-import { resolveDirOverride } from '../paths.ts';
+import type { HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
+import { resolveDirOverride } from '#core/paths.ts';
 import { piAdapter } from './config.ts';
 
 import { join } from 'node:path';

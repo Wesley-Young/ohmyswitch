@@ -1,6 +1,6 @@
 import { type Context, type Logger, Service } from 'cordis';
 
-import type {} from '../store/service.ts';
+import type {} from '#core/store/service.ts';
 import { findMatch, type ImportDraft, parseLink } from './link.ts';
 
 import { randomUUID } from 'node:crypto';

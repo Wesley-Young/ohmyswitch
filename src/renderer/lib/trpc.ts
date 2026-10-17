@@ -3,9 +3,9 @@ import { createTRPCClient, httpLink, httpSubscriptionLink, splitLink, TRPCClient
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 
 // The only renderer file allowed to reach into the main process, and only for types.
-import type { AppRouter } from '../../main/trpc/router.ts';
+import type { AppRouter } from '#main/trpc/router.ts';
 
-export type { RouterInputs, RouterOutputs } from '../../main/trpc/router.ts';
+export type { RouterInputs, RouterOutputs } from '#main/trpc/router.ts';
 
 /**
  * The page is served from app://ohmyswitch, so the relative URL reaches the main process handler. Subscriptions

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import type { Endpoint } from '../endpoints.ts';
-import { AppError } from '../errors.ts';
-import { BodyTooLargeError, type Fetch, readLimitedText } from '../http/fetch.ts';
-import type { ModelInfo } from '../provider.ts';
+import type { Endpoint } from '#core/endpoints.ts';
+import { AppError } from '#core/errors.ts';
+import { BodyTooLargeError, type Fetch, readLimitedText } from '#core/http/fetch.ts';
+import type { ModelInfo } from '#core/provider.ts';
 
 /** Model list formats; the provider's endpoint decides which one to use. */
 export type CatalogStyle = 'openai' | 'anthropic' | 'google';

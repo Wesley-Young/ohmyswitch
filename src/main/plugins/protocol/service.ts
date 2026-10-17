@@ -3,7 +3,7 @@ import { type Context, Service } from 'cordis';
 import { protocol } from 'electron';
 import { z } from 'zod';
 
-import { createAppRouter } from '../../trpc/router.ts';
+import { createAppRouter } from '#main/trpc/router.ts';
 import { createAssetHandler } from './assets.ts';
 import { appHost, appOrigin, appScheme, rpcEndpoint } from './scheme.ts';
 
