@@ -66,7 +66,7 @@ export function ProviderForm({
   return (
     <form
       noValidate
-      className="grid max-w-md gap-6"
+      className="grid gap-6"
       onSubmit={(event) => {
         event.preventDefault();
         setLastAction('submit');

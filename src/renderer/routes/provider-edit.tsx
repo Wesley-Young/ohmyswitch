@@ -24,7 +24,7 @@ export default function ProviderEdit() {
         {provider.isPending ? (
           <FormSkeleton />
         ) : provider.isError ? (
-          <div className="flex max-w-md items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm">
+          <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm">
             <span className="text-destructive">{formError(provider.error)?.message}</span>
             {notFound ? (
               <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/providers" />}>

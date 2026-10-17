@@ -22,7 +22,7 @@ export const emptyProviderValues: ProviderValues = {
   models: [],
 };
 
-/** The connection fields of a provider: name, Base URL, API Key and endpoint. */
+/** The connection fields of a provider: name, Base URL, API Key and endpoint. Only the text inputs are width-limited. */
 export function ProviderFields({
   values,
   onChange,
@@ -37,7 +37,7 @@ export function ProviderFields({
 
   return (
     <FieldGroup className="gap-4">
-      <Field data-invalid={Boolean(fieldError('name'))}>
+      <Field className="max-w-md" data-invalid={Boolean(fieldError('name'))}>
         <FieldLabel htmlFor="provider-name">名称</FieldLabel>
         <Input
           id="provider-name"
@@ -49,7 +49,7 @@ export function ProviderFields({
         />
         <FieldError>{fieldError('name')}</FieldError>
       </Field>
-      <Field data-invalid={Boolean(fieldError('baseUrl'))}>
+      <Field className="max-w-md" data-invalid={Boolean(fieldError('baseUrl'))}>
         <FieldLabel htmlFor="provider-base-url">Base URL</FieldLabel>
         <Input
           id="provider-base-url"
@@ -61,7 +61,7 @@ export function ProviderFields({
         />
         <FieldError>{fieldError('baseUrl')}</FieldError>
       </Field>
-      <Field data-invalid={Boolean(fieldError('apiKey'))}>
+      <Field className="max-w-md" data-invalid={Boolean(fieldError('apiKey'))}>
         <FieldLabel htmlFor="provider-api-key">API Key</FieldLabel>
         <SecretInput
           id="provider-api-key"
