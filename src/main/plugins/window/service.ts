@@ -1,5 +1,8 @@
 import { serviceToken } from '@fraqjs/kernel';
-import { BrowserWindow, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+
+import icon from '../../../../build/icon.png?asset';
+import macIcon from '../../../../build/icon-mac.png?asset';
 
 function openExternal(url: string) {
   if (/^https?:\/\//.test(url)) void shell.openExternal(url);
@@ -31,17 +34,21 @@ export class WindowService {
 
   private create() {
     const mac = process.platform === 'darwin';
+    if (mac) app.dock?.setIcon(macIcon);
     const window = new BrowserWindow({
       width: 1120,
       height: 740,
       minWidth: 860,
       minHeight: 560,
       show: false,
-      title: 'ohmyswitch',
+      title: app.name,
+      icon,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
       ...(mac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 16 } } : {}),
       webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false },
     });
+
+    window.on('page-title-updated', (event) => event.preventDefault());
 
     // Only app:// pages load inside the window; http(s) links open in the system browser.
     window.webContents.setWindowOpenHandler(({ url }) => {

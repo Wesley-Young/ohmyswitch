@@ -1,5 +1,4 @@
 import { cn } from 'cn';
-import { ArrowLeftRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { isMac } from '@/lib/platform';
@@ -16,9 +15,7 @@ export function TopBar({ actions }: { actions?: ReactNode }) {
         isMac ? 'pl-21' : 'pl-4',
       )}
     >
-      <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
-        <ArrowLeftRight className="size-3" strokeWidth={2.5} />
-      </span>
+      <img src="/logo.svg" alt="" className="size-5 shrink-0" draggable={false} />
       <span className="text-sm font-semibold tracking-tight">ohmyswitch</span>
       {actions && <div className="app-no-drag ml-auto flex items-center gap-1">{actions}</div>}
     </header>

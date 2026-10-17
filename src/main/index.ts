@@ -8,6 +8,8 @@ import { registerAppScheme } from './plugins/protocol/scheme.ts';
 import { WindowService } from './plugins/window/service.ts';
 
 // Process-level lifecycle only: the single-instance lock, startup and shutdown. Everything else is a plugin.
+app.setName('ohmyswitch');
+if (process.platform === 'win32') app.setAppUserModelId('io.github.wesley-young.ohmyswitch');
 applyUserDataOverride();
 registerAppScheme();
 

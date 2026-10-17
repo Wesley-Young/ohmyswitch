@@ -14,6 +14,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    publicDir: fileURLToPath(new URL('assets/brand', import.meta.url)),
     resolve: { alias: { '@': fileURLToPath(new URL('src/renderer', import.meta.url)) } },
     plugins: [react(), tailwindcss()],
     build: {
