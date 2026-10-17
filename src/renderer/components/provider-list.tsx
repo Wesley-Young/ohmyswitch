@@ -31,7 +31,9 @@ export function ProviderList() {
             </Button>
           </div>
         ) : (
-          <ul className="grid gap-0.5">
+          // A grid column sizes to its widest item by default; minmax(0, 1fr) keeps items at the column width so
+          // long names truncate instead of scrolling the column sideways.
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
             {providers.data.map((provider) => (
               <li key={provider.id}>
                 <ProviderItem provider={provider} applications={applications.data?.[provider.id] ?? []} />
@@ -65,29 +67,29 @@ function ProviderItem({ provider, applications }: { provider: Provider; applicat
           {applications.length > 0 && (
             <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
               {applications.map((application) => (
-                <span key={application.harnessId} className="relative flex">
-                  <HarnessGlyph id={application.harnessId} size={12} />
-                  {application.state !== 'applied' && (
-                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-destructive" />
+                <span
+                  key={application.harnessId}
+                  className={cn(
+                    'flex',
+                    // A harness whose config is out of sync is shown in the problem color.
+                    application.state !== 'applied' && 'text-destructive',
                   )}
+                >
+                  <HarnessGlyph id={application.harnessId} size={12} />
                 </span>
               ))}
             </span>
           )}
         </div>
-        <div className="truncate font-mono text-xs text-muted-foreground">{hostOf(provider.baseUrl)}</div>
+        <div className="truncate text-xs text-muted-foreground">{statusOf(provider)}</div>
       </div>
     </NavLink>
   );
 }
 
-const hostOf = (url: string) => {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-};
+/** The item's second line: a short status for the provider. */
+const statusOf = (provider: Provider) =>
+  provider.modelCount ? `${provider.modelCount} 个模型` : '尚未配置模型';
 
 function ListSkeleton() {
   return (

@@ -171,7 +171,7 @@ export function ProviderModels({
       ) : (
         <Empty className="border py-8">
           <EmptyHeader>
-            <EmptyTitle className="text-sm">还没有模型</EmptyTitle>
+            <EmptyTitle className="text-sm">尚未配置模型</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>{pickButton}</EmptyContent>
         </Empty>
