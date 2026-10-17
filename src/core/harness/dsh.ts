@@ -1,4 +1,4 @@
-import { resolveDirOverride } from './paths.ts';
+import { resolveDirOverride } from '../paths.ts';
 import type { HarnessDescriptor, HarnessEnvironment } from './types.ts';
 
 import { join } from 'node:path';

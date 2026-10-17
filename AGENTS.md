@@ -15,7 +15,8 @@
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
 - 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
 - `src/core`、`src/main` 中的相对导入写 `.ts` 后缀；渲染进程用 `@/` 别名，不写后缀。
-- 本地运行时可以把 `OHMYSWITCH_DATA_DIR` 设为另一个目录，它会同时隔离 userData 和单实例锁，不影响已安装的应用。
+- ohmyswitch 的数据目录是 `~/.ohmyswitch`（`store.json`、`cache/`），由 `core/paths.ts` 决定，GUI 和以后的 CLI/TUI 共用。Electron 的 userData 只放 Chromium 状态和单实例锁。
+- 本地运行时可以把 `OHMYSWITCH_HOME` 设为另一个目录，它会同时隔离数据目录、userData 和单实例锁，不影响已安装的应用。
 
 ## 主进程
 
@@ -23,7 +24,7 @@
 - 有状态的服务以实例注册。插件没有 stop 钩子，需要释放的资源在 service 的 `dispose()` 中释放。
 - 配置在启动时由 `loadConfig()` 读取一次，插件通过 `ctx.config` 使用，不直接读 `process.env`。
 - 渲染进程和 RPC 都由 `app://ohmyswitch` 提供（`plugins/protocol`）：`/api/trpc` 交给 tRPC 的 fetch 适配器，其余路径是界面资源，开发时代理到 Vite dev server。不使用 preload 和 `ipcMain`，新增能力一律写成 tRPC 过程。
-- ohmyswitch 自己的状态只通过 `StoreService.update` 修改，它负责校验、原子写入和串行化。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
+- ohmyswitch 自己的状态只通过 `StoreService.update` 修改，它负责校验、原子写入和串行化；逻辑在 `core/store.ts`，不依赖 Electron，以便 CLI/TUI 复用。目前只在进程内串行化，多个进程同时写入前需要加跨进程锁和写前比对。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
 - API Key 明文保存在 `store.json` 中，文件权限为 `0600`。不加密，也不接系统钥匙串：Key 最终会明文写进 Harness 的配置文件，而且钥匙串在 Linux 上并不可靠。API Key 不写入日志，列表等不需要展示 Key 的接口也不返回它。
 - 写 Harness 配置时：
   - 只改 ohmyswitch 负责的条目，其他内容原样保留，能保留注释的格式就保留注释。

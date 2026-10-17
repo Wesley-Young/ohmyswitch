@@ -1,13 +1,13 @@
 import { app, BrowserWindow, dialog } from 'electron';
 
 import { createApp } from './app.ts';
-import { applyDataDirOverride, loadConfig } from './config.ts';
+import { applyUserDataOverride, loadConfig } from './config.ts';
 import type { AppContext } from './kernel.ts';
 import { globalLogger } from './logging.ts';
 import { registerAppScheme } from './plugins/protocol/scheme.ts';
 import { createMainWindow } from './window.ts';
 
-applyDataDirOverride();
+applyUserDataOverride();
 registerAppScheme();
 
 let ctx: AppContext | undefined;

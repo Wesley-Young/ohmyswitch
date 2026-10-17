@@ -1,11 +1,13 @@
 import { app } from 'electron';
 
+import { ohmyswitchHome, resolveDirOverride } from '../core/paths.ts';
+
 import { homedir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { join } from 'node:path';
 
 export interface AppConfig {
   version: string;
-  /** Where ohmyswitch keeps its own state (store.json). */
+  /** ohmyswitch's own directory (`~/.ohmyswitch` or `OHMYSWITCH_HOME`): store.json and cache/. */
   dataDir: string;
   /** Built renderer files, served in production. */
   rendererDir: string;
@@ -17,22 +19,25 @@ export interface AppConfig {
 }
 
 /**
- * Honor OHMYSWITCH_DATA_DIR before anything touches userData. The single-instance lock and Chromium caches
- * live there too, so tests and development builds stay isolated from the installed app.
+ * Electron's userData holds only Chromium state and the single-instance lock; ohmyswitch's data lives in
+ * `dataDir`. When OHMYSWITCH_HOME is set, userData moves under it too, so one variable isolates a development
+ * instance completely from the installed app. Must run before anything touches userData.
  */
-export function applyDataDirOverride() {
-  const override = process.env.OHMYSWITCH_DATA_DIR;
-  if (override && isAbsolute(override)) app.setPath('userData', override);
+export function applyUserDataOverride() {
+  if (resolveDirOverride(homedir(), process.env.OHMYSWITCH_HOME)) {
+    app.setPath('userData', join(ohmyswitchHome(homedir(), process.env), 'electron'));
+  }
 }
 
 /** Read once at startup; plugins use `ctx.config` and never read `process.env` directly. */
 export function loadConfig(): AppConfig {
+  const home = homedir();
   return {
     version: app.getVersion(),
-    dataDir: app.getPath('userData'),
+    dataDir: ohmyswitchHome(home, process.env),
     rendererDir: join(import.meta.dirname, '../renderer'),
     rendererDevUrl: app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL,
-    home: homedir(),
+    home,
     env: { ...process.env },
   };
 }
