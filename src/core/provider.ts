@@ -15,12 +15,6 @@ export const baseUrl = z
   .pipe(z.url({ protocol: /^https?$/, error: '请填写 http 或 https 地址' }))
   .transform((value) => value.replace(/\/+$/, ''));
 
-export const accessPoint = z.object({
-  id: z.string().min(1).max(64),
-  label: z.string().max(64),
-  baseUrl,
-});
-
 /** Input kinds a model accepts. Text is always accepted; the others are listed when supported. */
 export const modelInputs = ['text', 'image', 'pdf'] as const;
 
@@ -73,14 +67,14 @@ export const modelInfo = z.object({
 export const storedProvider = z.object({
   id: z.uuid(),
   name: providerName,
-  accessPoints: z.array(accessPoint).min(1),
+  /** The root address requests go to; endpoints are appended to it. */
+  baseUrl,
   endpoint: z.enum(endpoints),
   apiKey: z.string(),
   models: z.array(modelInfo),
   createdAt: z.iso.datetime(),
 });
 
-export type AccessPoint = z.infer<typeof accessPoint>;
 export type ModelInput = (typeof modelInputs)[number];
 export type ReasoningOption = z.infer<typeof reasoningOption>;
 export type ModelInfo = z.infer<typeof modelInfo>;

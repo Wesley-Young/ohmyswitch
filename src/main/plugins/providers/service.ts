@@ -14,7 +14,7 @@ function summary(provider: StoredProvider) {
   return {
     id: provider.id,
     name: provider.name,
-    accessPoints: provider.accessPoints,
+    baseUrl: provider.baseUrl,
     endpoint: provider.endpoint,
     modelCount: provider.models.length,
     createdAt: provider.createdAt,
@@ -86,9 +86,7 @@ export class ProviderService {
       provider.apiKey = input.apiKey;
       provider.endpoint = input.endpoint;
       provider.models = input.models;
-      // The form edits the first access point; any others are kept as they are.
-      const [first, ...rest] = provider.accessPoints;
-      provider.accessPoints = [{ ...(first ?? { id: 'default', label: '默认' }), baseUrl: input.baseUrl }, ...rest];
+      provider.baseUrl = input.baseUrl;
       return summary(provider);
     });
   }
@@ -103,7 +101,7 @@ export class ProviderService {
     const provider: StoredProvider = {
       id: randomUUID(),
       name: input.name,
-      accessPoints: [{ id: 'default', label: '默认', baseUrl: input.baseUrl }],
+      baseUrl: input.baseUrl,
       endpoint: input.endpoint,
       apiKey: input.apiKey,
       models: input.models,

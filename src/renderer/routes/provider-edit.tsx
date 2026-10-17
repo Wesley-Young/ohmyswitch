@@ -61,7 +61,7 @@ function EditProviderForm({ provider }: { provider: ProviderDetail }) {
     <ProviderForm
       initialValues={{
         name: provider.name,
-        baseUrl: provider.accessPoints[0]?.baseUrl ?? '',
+        baseUrl: provider.baseUrl,
         apiKey: provider.apiKey,
         endpoint: provider.endpoint,
         models: provider.models,
