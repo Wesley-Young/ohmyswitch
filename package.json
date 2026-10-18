@@ -4,6 +4,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Provider-first config manager for AI coding harnesses",
+  "author": "Wei FeiYang",
   "license": "MIT",
   "repository": {
     "type": "git",

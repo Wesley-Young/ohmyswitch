@@ -1,10 +1,13 @@
 appId: io.github.wesley-young.ohmyswitch
 productName: ohmyswitch
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
   output: dist
   buildResources: build
 files:
   - out/**/*
+  # The CLI is published to npm on its own.
+  - '!out/cli/**'
   - package.json
 asar: true
 mac:
@@ -12,10 +15,23 @@ mac:
   # Only English and Simplified/Traditional Chinese; the other ~50 Chromium locales are dropped.
   electronLanguages: [en, zh_CN]
   category: public.app-category.developer-tools
-  target: [dmg, zip]
+  target:
+    - target: dmg
+      arch: [arm64]
+  # Ad-hoc signed, not notarized: Apple Silicon refuses to run unsigned code, and there is no Developer ID yet.
+  # Hardened runtime would reject the Electron frameworks, which carry another team's signature.
+  identity: '-'
+  hardenedRuntime: false
+dmg:
+  # No auto-update, which an ad-hoc signature could not pass on macOS anyway.
+  writeUpdateInfo: false
 win:
   icon: build/icon.ico
-  target: [nsis]
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  differentialPackage: false
 linux:
   icon: build/icon.png
   category: Development
