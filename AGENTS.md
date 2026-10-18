@@ -99,7 +99,7 @@
 
 ## CLI
 
-- oms 和 GUI 分开发布：CLI 用 tsdown 打包成 `out/cli/oms.mjs`（所有依赖都打进去，pnpm patch 才会生效），连同生成的 `package.json` 从 `out/cli` 发布到 npm。开发时用 `pnpm oms <args>` 直接运行源码。
+- oms 和 GUI 分开发布：CLI 用 tsdown 打包成 `out/cli/oms.mjs`（所有依赖都打进去，pnpm patch 才会生效），连同生成的 `package.json` 和 `LICENSE` 从 `out/cli` 发布到 npm。CLI 和 GUI 共用根目录 `package.json` 的版本号，发布清单的描述、许可证和仓库也取自它。发布用 `pnpm publish:cli`（`scripts/publish-cli.mjs`）：检查 git 和版本号、验证、构建、检查包内容、发布，再打 `v<version>` 的 tag；`--dry-run` 只走一遍不上传。开发时用 `pnpm oms <args>` 直接运行源码。
 - 输出、帮助和提示都用英文，和 GUI 区分开。core 的 schema 自带中文错误信息，CLI 根据 zod issue 的 code 自己写英文描述（`framework/validate.ts`），能在 CLI 中预先检查的错误（找不到、重名、不可选）先检查掉。
 - `cli/app.ts` 是 CLI 的组装入口，组装与 GUI 相同的 core 插件，读写同一份文件。CLI 不拿单实例锁，不写日志文件，日志只在 `--verbose` 时输出到 stderr。
 - GUI 和 CLI 共有的业务规则放在 core 的 service 里，前端不各写一份（如选择模型后的合并 `pickModels`、模型变化的比对 `modelChanges`，纯逻辑在 `core/providers/model-list.ts`）。前端只负责呈现和收集选择。

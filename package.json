@@ -4,6 +4,11 @@
   "private": true,
   "version": "0.1.0",
   "description": "Provider-first config manager for AI coding harnesses",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wesley-Young/ohmyswitch.git"
+  },
   "type": "module",
   "main": "out/main/index.js",
   "imports": {
@@ -21,6 +26,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build && tsdown",
     "build:cli": "tsdown",
+    "publish:cli": "node scripts/publish-cli.mjs",
     "oms": "node src/cli/index.ts",
     "preview": "electron-vite preview",
     "package": "electron-vite build && electron-builder --dir",

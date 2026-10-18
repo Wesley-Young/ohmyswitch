@@ -1,19 +1,26 @@
 import { defineConfig } from 'tsdown';
 
 import { readFileSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { copyFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const manifest = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as {
   version: string;
   description: string;
+  license: string;
+  repository: { type: string; url: string };
 };
 
-/** The package.json published to npm with the bundle: no dependencies, since everything is bundled. */
+/**
+ * The package.json published to npm with the bundle: no dependencies, since everything is bundled. The CLI and
+ * the app share the version.
+ */
 const published = {
   name: 'ohmyswitch',
   version: manifest.version,
   description: manifest.description,
+  license: manifest.license,
+  repository: manifest.repository,
   type: 'module',
   bin: { oms: 'oms.mjs', ohmyswitch: 'oms.mjs' },
   files: ['oms.mjs'],
@@ -43,5 +50,7 @@ export default defineConfig({
   inputOptions: { resolve: { mainFields: ['module', 'main'] } },
   async onSuccess(config) {
     await writeFile(join(config.outDir, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
+    // npm includes LICENSE whatever `files` says.
+    await copyFile('LICENSE', join(config.outDir, 'LICENSE'));
   },
 });
