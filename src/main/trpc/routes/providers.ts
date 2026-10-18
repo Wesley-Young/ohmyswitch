@@ -1,6 +1,7 @@
 import {
   createProviderInput,
   importFromHarnessesInput,
+  pickModelsInput,
   providerIdInput,
   reorderInput,
   reviewModelsInput,
@@ -23,8 +24,10 @@ export function providerRoutes(providers: ProviderService) {
     fetchModels: publicProcedure
       .input(providerIdInput)
       .mutation(({ input }) => providers.fetchModels(input.providerId)),
-    // A query: the provider page checks the list in the background to offer what changed.
-    remoteModels: publicProcedure.input(providerIdInput).query(({ input }) => providers.remoteModels(input.providerId)),
+    // A query: the provider page checks the list in the background to offer what changed. The service reuses a
+    // recent list, so asking again after a save does not reach the provider.
+    modelChanges: publicProcedure.input(providerIdInput).query(({ input }) => providers.modelChanges(input.providerId)),
+    pickModels: publicProcedure.input(pickModelsInput).mutation(({ input }) => providers.pickModels(input)),
     setModels: publicProcedure.input(setModelsInput).mutation(({ input }) => providers.setModels(input)),
     reviewModels: publicProcedure.input(reviewModelsInput).mutation(({ input }) => providers.reviewModels(input)),
     syncModels: publicProcedure.input(providerIdInput).mutation(({ input }) => providers.syncModels(input.providerId)),

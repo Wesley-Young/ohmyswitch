@@ -22,6 +22,7 @@ import {
   endpointDetails,
   endpointLabels,
   harnessIndex,
+  modelStages,
   noProviders,
   type ProviderSummary,
   problemsOf,
@@ -166,19 +167,23 @@ const add = command({
   async run(values, scope) {
     await assertNameFree(scope, values.name);
     const ctx = await scope.services();
-    return ctx.providers.create(
-      createProviderInput.parse({
-        name: values.name,
-        baseUrl: values.baseUrl,
-        endpoint: values.endpoint,
-        apiKey: values.apiKey,
-        iconUrl: values.iconUrl,
-        modelIds: values.models,
-      }),
-    );
+    const input = createProviderInput.parse({
+      name: values.name,
+      baseUrl: values.baseUrl,
+      endpoint: values.endpoint,
+      apiKey: values.apiKey,
+      iconUrl: values.iconUrl,
+      modelIds: values.models,
+    });
+    return scope.progress((stage) => ctx.providers.create(input, { onStage: modelStages(input, stage) }));
   },
   render(provider, out) {
     out.success(`Added "${provider.name}" with ${plural(provider.modelCount, 'model')}.`);
+    if (!provider.modelCount) {
+      out.hint(
+        `Some harnesses need at least one model. Choose them with "oms model pick ${shellQuote(provider.name)}".`,
+      );
+    }
     out.hint(`Apply it to harnesses with "oms apply ${shellQuote(provider.name)}".`);
   },
 });

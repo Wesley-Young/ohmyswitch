@@ -119,12 +119,18 @@ export async function ask(param: ParamSpec, required: boolean, scope: Scope): Pr
   }
 }
 
-async function choicesOf(param: ParamSpec, scope: Scope) {
+/** Lists longer than this can be filtered by typing, like the GUI's model picker with its search box. */
+const filterableFrom = 12;
+
+/**
+ * The options to show, or undefined when an optional parameter has none to offer, which leaves it unset. A
+ * required one with nothing to choose cannot go on.
+ */
+async function choicesOf(param: ParamSpec, required: boolean, scope: Scope) {
   const choices = (await param.choices?.(scope)) ?? [];
-  if (!choices.some((choice) => !choice.disabled)) {
-    throw new CliError('precondition_failed', param.empty ?? `There is nothing to choose for "${param.summary}"`);
-  }
-  return choices;
+  if (choices.some((choice) => !choice.disabled)) return choices;
+  if (!required) return undefined;
+  throw new CliError('precondition_failed', param.empty ?? `There is nothing to choose for "${param.summary}"`);
 }
 
 const optionOf = (choice: Choice<unknown>, index: number) => ({
@@ -135,18 +141,18 @@ const optionOf = (choice: Choice<unknown>, index: number) => ({
 });
 
 async function askOne(param: ParamSpec, required: boolean, scope: Scope): Promise<Answer> {
-  const choices = await choicesOf(param, scope);
+  const choices = await choicesOf(param, required, scope);
+  if (!choices) return unchanged;
   const initial = await param.initial?.(scope);
   const initialIndex = choices.findIndex((choice) => choice.value === initial);
   const skip = -1;
   const options = choices.map(optionOf);
   if (!required && initialIndex < 0) options.push({ value: skip, label: 'Skip', hint: undefined, disabled: false });
+  const initialValue = initialIndex >= 0 ? initialIndex : undefined;
   const index = await prompted(() =>
-    prompts.select({
-      message: param.summary,
-      options,
-      initialValue: initialIndex >= 0 ? initialIndex : undefined,
-    }),
+    options.length > filterableFrom
+      ? prompts.autocomplete({ message: param.summary, options, initialValue, placeholder: 'Type to filter' })
+      : prompts.select({ message: param.summary, options, initialValue }),
   );
   if (index === skip || index === initialIndex) return unchanged;
   const choice = choices[index] as Choice<unknown>;
@@ -154,14 +160,22 @@ async function askOne(param: ParamSpec, required: boolean, scope: Scope): Promis
 }
 
 async function askMany(param: ParamSpec, required: boolean, scope: Scope): Promise<Answer> {
-  const choices = await choicesOf(param, scope);
+  const choices = await choicesOf(param, required, scope);
+  if (!choices) return unchanged;
+  const initial = ((await param.initial?.(scope)) ?? []) as readonly unknown[];
+  const options = choices.map(optionOf);
+  const initialValues = choices.flatMap((choice, index) => (initial.includes(choice.value) ? [index] : []));
   for (;;) {
     const indexes = await prompted(() =>
-      prompts.multiselect({
-        message: param.summary,
-        options: choices.map(optionOf),
-        required: false,
-      }),
+      options.length > filterableFrom
+        ? prompts.autocompleteMultiselect({
+            message: param.summary,
+            options,
+            initialValues,
+            required: false,
+            placeholder: 'Type to filter',
+          })
+        : prompts.multiselect({ message: param.summary, options, initialValues, required: false }),
     );
     if (required && !indexes.length) {
       prompts.log.warn('Select at least one (space toggles an option).');

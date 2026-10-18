@@ -1,11 +1,12 @@
 import { type Choice, type Scope, select } from '#cli/framework/command.ts';
 import type { Output } from '#cli/framework/output.ts';
+import type { Stage } from '#cli/framework/progress.ts';
 import { listing } from '#cli/framework/text.ts';
 import type { Endpoint } from '#core/endpoints.ts';
 import { endpoints } from '#core/endpoints.ts';
 import type { ApplicationState } from '#core/harnesses/applications.ts';
 import type { HarnessFailure, HarnessService } from '#core/harnesses/service.ts';
-import type { ProviderService } from '#core/providers/service.ts';
+import type { ModelStage, ProviderService } from '#core/providers/service.ts';
 
 export type ProviderSummary = ReturnType<ProviderService['list']>[number];
 export type HarnessInfo = Awaited<ReturnType<HarnessService['list']>>[number];
@@ -106,6 +107,16 @@ export function problemsOf(
   harnesses: ReadonlyMap<string, HarnessRef>,
 ): HarnessProblem[] {
   return failures.map((failure) => ({ ...refOf(failure.harnessId, harnesses), message: failure.message }));
+}
+
+/** Spinner messages for the steps of getting a provider's models. */
+export function modelStages(provider: { baseUrl: string }, stage: Stage) {
+  return (step: ModelStage) =>
+    stage(
+      step === 'list'
+        ? `Fetching models from ${new URL(provider.baseUrl).host}…`
+        : 'Loading model details from models.dev…',
+    );
 }
 
 /** One warning per harness that could not be written. */

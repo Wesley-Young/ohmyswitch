@@ -102,6 +102,7 @@
 - oms 和 GUI 分开发布：CLI 用 tsdown 打包成 `out/cli/oms.mjs`（所有依赖都打进去，pnpm patch 才会生效），连同生成的 `package.json` 从 `out/cli` 发布到 npm。开发时用 `pnpm oms <args>` 直接运行源码。
 - 输出、帮助和提示都用英文，和 GUI 区分开。core 的 schema 自带中文错误信息，CLI 根据 zod issue 的 code 自己写英文描述（`framework/validate.ts`），能在 CLI 中预先检查的错误（找不到、重名、不可选）先检查掉。
 - `cli/app.ts` 是 CLI 的组装入口，组装与 GUI 相同的 core 插件，读写同一份文件。CLI 不拿单实例锁，不写日志文件，日志只在 `--verbose` 时输出到 stderr。
+- GUI 和 CLI 共有的业务规则放在 core 的 service 里，前端不各写一份（如选择模型后的合并 `pickModels`、模型变化的比对 `modelChanges`，纯逻辑在 `core/providers/model-list.ts`）。前端只负责呈现和收集选择。
 - 命令只用 `framework/command.ts` 声明一次：参数的类型、取值（`parse`、`choices`）和校验同时供命令行和交互提示使用，交互模式只是参数的另一种来源。在终端中缺参数时才提示（`--json`、`--no-input`、非 TTY、CI 都不提示）；`oms` 不带命令进入菜单，按命令树展开，执行完一个命令（成功或失败）后回到进入时的那一层；Esc 返回一级（放弃当前命令时留在原来的菜单），Ctrl-C 在任何地方都直接退出。直接带命令运行时只补齐参数，执行完就退出。不写只属于交互模式或只属于命令行的功能。
 - 结果写 stdout，警告、错误和提示写 stderr；`run` 只返回结果，`--json` 原样输出它，`render` 给人看。不可恢复的操作用 `confirm` 声明，由 `--yes` 或交互确认；命令中途需要确认的事项（如接管同名条目）用 `RunScope.confirm` 对应到一个 flag。交互完成后打印等价命令。
 - 退出码是对脚本的契约（`framework/errors.ts` 的 `exitCodes`），不随意改动。

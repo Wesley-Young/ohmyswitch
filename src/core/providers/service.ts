@@ -9,9 +9,11 @@ import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { candidateId, groupImports, type ImportCandidate, uniqueName, withImportedModels } from './harness-import.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
+import { changesSince, pickedModels } from './model-list.ts';
 import type {
   CreateProviderInput,
   ImportFromHarnessesInput,
+  PickModelsInput,
   ReorderInput,
   ReviewModelsInput,
   SetModelsInput,
@@ -26,9 +28,35 @@ declare module 'cordis' {
   }
 }
 
+/** How long a provider's model list is reused before it is fetched again. */
+const listingMaxAgeMs = 10 * 60_000;
+
+/** A provider's model list as last fetched, and the connection it was fetched with. */
+interface Listing {
+  connection: string;
+  models: ModelInfo[];
+  fetchedAt: number;
+}
+
+/**
+ * The steps of getting a provider's models, for front ends that show progress: asking the provider for its list,
+ * then loading model details from models.dev.
+ */
+export type ModelStage = 'list' | 'details';
+
+export interface ModelProgress {
+  /** Called as each step starts. A model list reused from a recent fetch is not asked for, so not reported. */
+  onStage?: (stage: ModelStage) => void;
+}
+
+const connectionOf = (provider: StoredProvider) =>
+  JSON.stringify([provider.baseUrl, provider.endpoint, provider.apiKey]);
+
 export class ProviderService extends Service {
   static readonly inject = ['store', 'harnesses', 'http', 'modelsDev', 'icons'];
   private readonly logger: Logger;
+  /** Model lists fetched this run, so asking what changed after every save costs no request. */
+  private readonly listings = new Map<string, Listing>();
 
   constructor(ctx: Context) {
     super(ctx, 'providers');
@@ -56,20 +84,36 @@ export class ProviderService extends Service {
    * models.dev. The user picks which models to keep, so only the list itself is recorded as reviewed. models.dev
    * failing does not fail the request; it is reported alongside.
    */
-  async fetchModels(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
-    const result = await this.remote(providerId);
+  async fetchModels(
+    providerId: string,
+    progress: ModelProgress = {},
+  ): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+    const result = await this.remote(providerId, progress);
     await this.recordListed(providerId, result.models);
     return result;
   }
 
   /**
-   * The provider's model list, for comparing with the saved models in the background. The first time, it is only
-   * recorded, so models that were already there are not offered as new. A failure of models.dev is not reported.
+   * The provider's model list and how it changed since it was last reviewed. The list is fetched at most every few
+   * minutes per connection, so asking again after the saved models change costs no request. The first time, the
+   * list is only recorded, so models that were already there are not offered as new. A failure of models.dev is
+   * not reported.
    */
-  async remoteModels(providerId: string): Promise<{ models: ModelInfo[] }> {
-    const { models } = await this.remote(providerId);
-    if (!this.find(this.ctx.store.data.providers, providerId).listedModels) await this.recordListed(providerId, models);
-    return { models };
+  async modelChanges(providerId: string, progress: ModelProgress = {}) {
+    const listed = await this.listing(providerId, progress);
+    const provider = this.find(this.ctx.store.data.providers, providerId);
+    if (!provider.listedModels) {
+      await this.recordListed(providerId, listed);
+      return { listed, added: [] as ModelInfo[], removed: [] as ModelInfo[] };
+    }
+    return { listed, ...changesSince(provider.models, provider.listedModels, listed) };
+  }
+
+  /** Keep the chosen models of the provider's list, as it was shown, and rewrite the harnesses. */
+  pickModels(input: PickModelsInput) {
+    return this.save(input.providerId, (provider) => {
+      provider.models = pickedModels(provider.models, input.listed, input.selected);
+    });
   }
 
   /** Replace the provider's model list and rewrite it in the harnesses it is applied to. */
@@ -185,7 +229,8 @@ export class ProviderService extends Service {
    * Overwrite model metadata with models.dev values where it has them, save, and rewrite the harnesses. Unlike
    * the fill after fetching, this is an explicit request, so models.dev failing is an error.
    */
-  async syncModels(providerId: string) {
+  async syncModels(providerId: string, progress: ModelProgress = {}) {
+    progress.onStage?.('details');
     const index = await this.ctx.modelsDev.index();
     let unmatched = 0;
     const result = await this.save(providerId, (provider) => {
@@ -213,8 +258,8 @@ export class ProviderService extends Service {
     });
   }
 
-  async create(input: CreateProviderInput) {
-    const models = input.modelIds?.length ? await this.initialModels(input.modelIds) : [];
+  async create(input: CreateProviderInput, progress: ModelProgress = {}) {
+    const models = input.modelIds?.length ? await this.initialModels(input.modelIds, progress) : [];
     const provider: StoredProvider = {
       id: randomUUID(),
       name: input.name,
@@ -259,11 +304,13 @@ export class ProviderService extends Service {
       if (index < 0) throw new AppError('not_found', '供应商不存在或已删除');
       draft.providers.splice(index, 1);
     });
+    this.listings.delete(providerId);
     await this.ctx.icons.forget(providerId);
   }
 
   /** Models from their ids, with metadata from models.dev where it is available; without it, ids alone. */
-  private async initialModels(ids: string[]): Promise<ModelInfo[]> {
+  private async initialModels(ids: string[], progress: ModelProgress): Promise<ModelInfo[]> {
+    progress.onStage?.('details');
     return ids.map((id) => ({ id })).map(await this.enricher());
   }
 
@@ -278,17 +325,39 @@ export class ProviderService extends Service {
     }
   }
 
-  /** The models the provider lists now, with metadata from models.dev where it is available. */
-  private async remote(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+  /** The provider's model list as fetched recently with its current connection, or fetched now. */
+  private async listing(providerId: string, progress: ModelProgress) {
     const provider = this.find(this.ctx.store.data.providers, providerId);
+    const cached = this.listings.get(providerId);
+    if (cached?.connection === connectionOf(provider) && Date.now() - cached.fetchedAt < listingMaxAgeMs) {
+      return cached.models;
+    }
+    return (await this.remote(providerId, progress)).models;
+  }
+
+  /**
+   * The models the provider lists now, with metadata from models.dev where it is available. The list is kept for
+   * `listing`.
+   */
+  private async remote(
+    providerId: string,
+    progress: ModelProgress,
+  ): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+    const provider = this.find(this.ctx.store.data.providers, providerId);
+    const connection = connectionOf(provider);
+    progress.onStage?.('list');
     const { models } = await fetchModelCatalog(provider, this.ctx.http.fetch, AbortSignal.timeout(20_000));
+    let result: { models: ModelInfo[]; metadataError?: string };
     try {
+      progress.onStage?.('details');
       const index = await this.ctx.modelsDev.index();
-      return { models: models.map((model) => index.enrich(model)) };
+      result = { models: models.map((model) => index.enrich(model)) };
     } catch (error) {
       this.logger.warn('Failed to load models.dev', error);
-      return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
+      result = { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
     }
+    this.listings.set(providerId, { connection, models: result.models, fetchedAt: Date.now() });
+    return result;
   }
 
   /** Remember the provider's model list as reviewed. A provider deleted meanwhile is skipped. */

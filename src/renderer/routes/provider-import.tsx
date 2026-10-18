@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { refreshConnection, refreshProviders } from '@/lib/cache';
+import { refreshProviders } from '@/lib/cache';
 import { endpoints } from '@/lib/endpoints';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
@@ -139,7 +139,7 @@ function UpdateForm({ pending, match, onDone }: { pending: Pending; match: Match
   const update = useMutation(
     trpc.providers.update.mutationOptions({
       onSuccess: async (saved) => {
-        await refreshConnection(saved.id);
+        await refreshProviders();
         report(`已更新「${saved.name}」`, saved);
         navigate(`/providers/${saved.id}`);
         onDone();

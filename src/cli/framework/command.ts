@@ -2,6 +2,7 @@ import type { Context } from 'cordis';
 
 import type { CliConfig } from '#cli/config.ts';
 import type { Output } from './output.ts';
+import type { Stage } from './progress.ts';
 
 /** The state of one CLI run, shared by every command it executes. */
 export interface Session {
@@ -13,6 +14,8 @@ export interface Session {
   readonly json: boolean;
   /** Irreversible operations are confirmed in advance. */
   readonly yes: boolean;
+  /** Slow steps show a spinner on stderr. */
+  readonly progress: boolean;
   /** The core services, started on first use. */
   services(): Promise<Context>;
   /** Stop the services, so the next command reads every file afresh. */
@@ -35,6 +38,13 @@ export interface Scope {
   readonly session: Session;
   services(): Promise<Context>;
   readonly values: Readonly<Record<string, unknown>>;
+  /**
+   * Compute something once per command run, such as a provider's model list that both a parameter's choices and
+   * `run` need: later calls with the same key get the first result.
+   */
+  memo<T>(key: string, compute: () => Promise<T>): Promise<T>;
+  /** Run a slow task, showing each stage it reports in a spinner while it runs. */
+  progress<T>(task: (stage: Stage) => Promise<T>): Promise<T>;
 }
 
 /** What a command's `run` can do beyond reading its parameters. */
@@ -158,8 +168,10 @@ export function select(options: SelectOptions<unknown> & Requirement): ParamSpec
 
 /** Several of a set of options. Unset is empty; when required, at least one. */
 export function selectMany<T>(
-  options: Omit<SelectOptions<T>, 'initial'> &
-    ({ optional?: false } | { optional: true; requiredWhen?: ParamSpec['requiredWhen'] }),
+  options: Omit<SelectOptions<T>, 'initial'> & {
+    /** The options ticked when prompting. */
+    initial?: (scope: Scope) => readonly T[] | undefined | Promise<readonly T[] | undefined>;
+  } & ({ optional?: false } | { optional: true; requiredWhen?: ParamSpec['requiredWhen'] }),
 ): Param<T[]> {
   return { ...base('select', options), multiple: true };
 }

@@ -46,6 +46,18 @@ export const setModelsInput = providerIdInput.extend({
 const modelId = z.string().min(1).max(256);
 
 /**
+ * The outcome of choosing which of the provider's listed models to keep: the list as it was shown, and the ids
+ * chosen from it. Saved models the list does not include are kept.
+ */
+export const pickModelsInput = providerIdInput.extend({
+  listed: z.array(modelInfo).max(2000),
+  selected: z
+    .array(modelId)
+    .max(2000)
+    .transform((ids) => [...new Set(ids)]),
+});
+
+/**
  * The outcome of reviewing how the provider's model list changed: models to add and remove, and the list as it
  * was reviewed, which later changes are measured against.
  */
@@ -71,6 +83,7 @@ export const importFromHarnessesInput = z.object({
 
 export type CreateProviderInput = z.infer<typeof createProviderInput>;
 export type ReviewModelsInput = z.infer<typeof reviewModelsInput>;
+export type PickModelsInput = z.infer<typeof pickModelsInput>;
 export type ImportFromHarnessesInput = z.infer<typeof importFromHarnessesInput>;
 export type UpdateProviderInput = z.infer<typeof updateProviderInput>;
 export type SetModelsInput = z.infer<typeof setModelsInput>;

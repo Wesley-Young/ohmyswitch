@@ -14,6 +14,7 @@ import {
 import { Cancelled, CliError, exitCodes, ParamError, toCliError } from './errors.ts';
 import { commandHelp, groupHelp } from './help.ts';
 import type { Output } from './output.ts';
+import { withProgress } from './progress.ts';
 import { type Answer, ask, confirm, pickEntry } from './prompt.ts';
 import { shellQuote } from './text.ts';
 
@@ -135,7 +136,17 @@ async function execute(command: Command, path: readonly string[], invocation: In
   const written = new Map<string, string[]>();
   const confirmedFlags = new Set<string>();
   let prompted = false;
-  const scope: Scope = { session, services: () => session.services(), values };
+  const memos = new Map<string, Promise<unknown>>();
+  const scope: Scope = {
+    session,
+    services: () => session.services(),
+    values,
+    memo<T>(key: string, compute: () => Promise<T>) {
+      if (!memos.has(key)) memos.set(key, compute());
+      return memos.get(key) as Promise<T>;
+    },
+    progress: (task) => withProgress(session.progress, task),
+  };
   // Optional parameters are asked only when the command line gave none of them: `oms provider edit X` asks what
   // to change, `oms provider edit X --name Y` just renames.
   const explicitOptional = params.some(
@@ -152,12 +163,13 @@ async function execute(command: Command, path: readonly string[], invocation: In
     }
     if (isGiven(given)) {
       try {
-        values[key] = await resolveRaw(param, given as string[], scope);
+        const resolved = await resolveRaw(param, given as string[], scope);
+        values[key] = resolved.value;
+        written.set(key, resolved.written);
       } catch (error) {
         if (error instanceof ParamError) throw new CliError(error.kind, `${label}: ${error.message}`, help);
         throw error;
       }
-      written.set(key, param.kind === 'select' ? await keysOf(param, given as string[], scope) : (given as string[]));
       continue;
     }
     const required = param.optional ? (param.requiredWhen?.(values) ?? false) : true;
@@ -252,15 +264,20 @@ async function readSecret(name: string, options: Invocation['options'], session:
   return undefined;
 }
 
+/**
+ * The value of raw command-line strings, and how to write them in the equivalent command: as given, or for a
+ * select by the first key of each option named, so it uses one spelling.
+ */
 async function resolveRaw(param: ParamSpec, raws: readonly string[], scope: Scope) {
   if (param.kind === 'select') {
     const choices = (await param.choices?.(scope)) ?? [];
-    const chosen = raws.map((raw) => match(param, choices, raw));
-    return param.multiple ? [...new Set(chosen.map((choice) => choice.value))] : chosen[0]?.value;
+    const chosen = [...new Set(raws.map((raw) => match(param, choices, raw)))];
+    const written = chosen.map((choice) => choice.keys[0] ?? choice.label);
+    return { value: param.multiple ? chosen.map((choice) => choice.value) : chosen[0]?.value, written };
   }
   const parse = param.parse ?? ((raw: string) => raw);
-  if (param.multiple) return raws.map((raw) => parse(raw));
-  return parse(raws[0] ?? '');
+  const value = param.multiple ? raws.map((raw) => parse(raw)) : parse(raws[0] ?? '');
+  return { value, written: [...raws] };
 }
 
 /** The option a raw string names: by exact key, else by a key that differs only in case. */
@@ -280,15 +297,6 @@ function match(param: ParamSpec, choices: readonly Choice<unknown>[], raw: strin
   }
   if (choice.disabled) throw new ParamError(`${choice.label}: ${choice.disabled}`, 'precondition_failed');
   return choice;
-}
-
-/** The first key of each option the raw strings named, so equivalent commands use one spelling. */
-async function keysOf(param: ParamSpec, raws: readonly string[], scope: Scope) {
-  const choices = (await param.choices?.(scope)) ?? [];
-  return raws.map((raw) => {
-    const choice = match(param, choices, raw);
-    return choice.keys[0] ?? raw;
-  });
 }
 
 function describeMissing(key: string, param: ParamSpec) {

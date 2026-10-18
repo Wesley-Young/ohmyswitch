@@ -18,10 +18,8 @@ import {
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { refreshFetchedModels, refreshProviders } from '@/lib/cache';
-import { formatTokens, inputLabels, type Model, modelChanges, optionalInputs, reasoningLabel } from '@/lib/models';
+import { formatTokens, inputLabels, type Model, optionalInputs, reasoningLabel } from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
-
-const byId = (a: Model, b: Model) => a.id.localeCompare(b.id);
 
 /**
  * The provider's models on its page. Each change is saved right away and rewrites the harnesses the provider is
@@ -31,13 +29,10 @@ export function ProviderModels({
   providerId,
   providerName,
   models,
-  listedModels,
 }: {
   providerId: string;
   providerName: string;
   models: Model[];
-  /** The provider's model list as last reviewed, which changes are measured against. */
-  listedModels: string[] | undefined;
 }) {
   const report = useHarnessFeedback();
   const [editing, setEditing] = useState<Model>();
@@ -47,22 +42,16 @@ export function ProviderModels({
 
   // Checked in the background to offer what changed; failures are not shown, since nothing was asked for.
   const remote = useQuery(
-    trpc.providers.remoteModels.queryOptions(
-      { providerId },
-      { enabled: models.length > 0, staleTime: 10 * 60_000, retry: false },
-    ),
+    trpc.providers.modelChanges.queryOptions({ providerId }, { enabled: models.length > 0, retry: false }),
   );
-  const changes = useMemo(
-    () => modelChanges(models, listedModels, remote.data?.models),
-    [models, listedModels, remote.data],
-  );
+  const changes = remote.data ?? { added: [], removed: [] };
   const changeCount = changes.added.length + changes.removed.length;
 
   const fetchModels = useMutation(
     trpc.providers.fetchModels.mutationOptions({
-      onSuccess: ({ models: fetched, metadataError }) => {
+      onSuccess: ({ metadataError }) => {
         if (metadataError) toast.warning(`未能补全模型信息：${metadataError}`);
-        void refreshFetchedModels(providerId, fetched);
+        void refreshFetchedModels(providerId);
         setPicking(true);
       },
     }),
@@ -74,6 +63,15 @@ export function ProviderModels({
         setReviewing(false);
         if (!add.length && !remove.length) toast.success('已忽略模型变化');
         else report(reviewMessage(add.length, remove.length), saved);
+      },
+      onError: (error) => toast.error(formError(error)?.message),
+    }),
+  );
+  const pickModels = useMutation(
+    trpc.providers.pickModels.mutationOptions({
+      onSuccess: async (saved) => {
+        await refreshProviders();
+        report(`已保存 ${saved.modelCount} 个模型`, saved);
       },
       onError: (error) => toast.error(formError(error)?.message),
     }),
@@ -101,7 +99,12 @@ export function ProviderModels({
       onError: (error) => toast.error(formError(error)?.message),
     }),
   );
-  const pending = fetchModels.isPending || setModels.isPending || syncModels.isPending || reviewModels.isPending;
+  const pending =
+    fetchModels.isPending ||
+    pickModels.isPending ||
+    setModels.isPending ||
+    syncModels.isPending ||
+    reviewModels.isPending;
 
   const save = (next: Model[], message: string, undo?: Model[]) =>
     setModels.mutate(
@@ -232,7 +235,7 @@ export function ProviderModels({
             providerId,
             add,
             remove,
-            listed: (remote.data?.models ?? []).map((model) => model.id),
+            listed: (remote.data?.listed ?? []).map((model) => model.id),
           })
         }
       />
@@ -242,7 +245,7 @@ export function ProviderModels({
         onOpenChange={setPicking}
         remote={fetchModels.data?.models ?? []}
         current={models}
-        onConfirm={(next) => save(next, `已保存 ${next.length} 个模型`)}
+        onConfirm={(selected) => pickModels.mutate({ providerId, listed: fetchModels.data?.models ?? [], selected })}
       />
     </section>
   );
@@ -283,7 +286,7 @@ export function ModelSummary({ model }: { model: Model }) {
   );
 }
 
-/** Choose which of the provider's models to keep. Models the provider no longer lists are left untouched. */
+/** Choose which of the provider's models to keep, by id. Models the provider no longer lists are left untouched. */
 export function ModelPickerDialog({
   title,
   open,
@@ -297,7 +300,7 @@ export function ModelPickerDialog({
   onOpenChange: (open: boolean) => void;
   remote: Model[];
   current: Model[];
-  onConfirm: (models: Model[]) => void;
+  onConfirm: (selected: string[]) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -306,8 +309,8 @@ export function ModelPickerDialog({
           title={title}
           remote={remote}
           current={current}
-          onConfirm={(models) => {
-            onConfirm(models);
+          onConfirm={(selected) => {
+            onConfirm(selected);
             onOpenChange(false);
           }}
         />
@@ -326,7 +329,7 @@ function ModelPicker({
   title: string;
   remote: Model[];
   current: Model[];
-  onConfirm: (models: Model[]) => void;
+  onConfirm: (selected: string[]) => void;
 }) {
   const [query, setQuery] = useState('');
   // With no models yet, start from everything the provider offers; otherwise from what is already kept.
@@ -351,17 +354,8 @@ function ModelPicker({
       return next;
     });
 
-  const confirm = () => {
-    const remoteIds = new Set(remote.map((model) => model.id));
-    const existing = new Map(current.map((model) => [model.id, model]));
-    onConfirm(
-      [
-        ...current.filter((model) => !remoteIds.has(model.id)),
-        // Values already on a kept model (possibly edited by hand) win; fetched metadata only fills the gaps.
-        ...remote.filter((model) => selected.has(model.id)).map((model) => ({ ...model, ...existing.get(model.id) })),
-      ].sort(byId),
-    );
-  };
+  // How the choice merges with the saved models is up to the service (`pickModels`).
+  const confirm = () => onConfirm(remote.filter((model) => selected.has(model.id)).map((model) => model.id));
 
   return (
     <form

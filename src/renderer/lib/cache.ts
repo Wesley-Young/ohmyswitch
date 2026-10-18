@@ -1,41 +1,27 @@
-import { matchQuery } from '@tanstack/react-query';
-
-import type { Model } from './models';
 import { queryClient, trpc } from './trpc';
 
 /**
- * Provider queries answered from ohmyswitch's own data. The models a provider lists are fetched from the provider
- * itself, and only a new connection changes them.
+ * After a provider changes, refresh the provider list, where it is applied, its icon, and what changed in its
+ * model list. The service compares with a recent copy of the list, and asks the provider again only for a new
+ * connection, so this costs no request to the provider.
  */
-const savedProviderData = {
-  ...trpc.providers.pathFilter(),
-  predicate: (query: Parameters<typeof matchQuery>[1]) => !matchQuery(trpc.providers.remoteModels.pathFilter(), query),
-};
-
-/** After a provider changes, refresh the provider list, where it is applied, and its icon. */
 export const refreshProviders = () =>
   Promise.all([
-    queryClient.invalidateQueries(savedProviderData),
+    queryClient.invalidateQueries(trpc.providers.pathFilter()),
     queryClient.invalidateQueries(trpc.harnesses.pathFilter()),
     // The icon source follows the Base URL and the icon field.
     queryClient.invalidateQueries(trpc.icons.pathFilter()),
   ]);
 
-/** After a provider's connection changes, also ask it again which models it lists. */
-export const refreshConnection = (providerId: string) =>
-  Promise.all([
-    refreshProviders(),
-    queryClient.invalidateQueries(trpc.providers.remoteModels.queryFilter({ providerId })),
-  ]);
-
 /**
- * After the provider's model list was fetched, which also records it as reviewed: keep it for the background
- * comparison, and reload the provider for the recorded list.
+ * After the provider's model list was fetched, which also records it as reviewed: reload the provider for the
+ * recorded list, and what changed against the fetched one.
  */
-export const refreshFetchedModels = (providerId: string, models: Model[]) => {
-  queryClient.setQueryData(trpc.providers.remoteModels.queryKey({ providerId }), { models });
-  return queryClient.invalidateQueries(trpc.providers.get.queryFilter({ providerId }));
-};
+export const refreshFetchedModels = (providerId: string) =>
+  Promise.all([
+    queryClient.invalidateQueries(trpc.providers.get.queryFilter({ providerId })),
+    queryClient.invalidateQueries(trpc.providers.modelChanges.queryFilter({ providerId })),
+  ]);
 
 /** After plugins change, refresh the plugin list and everything that lists harnesses. */
 export const refreshPlugins = () =>
@@ -44,5 +30,5 @@ export const refreshPlugins = () =>
     queryClient.invalidateQueries(trpc.harnesses.pathFilter()),
     // Provider summaries list the harnesses they are applied to, which only counts enabled ones; what can be
     // imported depends on them too.
-    queryClient.invalidateQueries(savedProviderData),
+    queryClient.invalidateQueries(trpc.providers.pathFilter()),
   ]);
