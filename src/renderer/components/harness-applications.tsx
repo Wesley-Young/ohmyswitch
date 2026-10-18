@@ -215,7 +215,7 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
       <div className="grid gap-2">
         {visible.length > 0 && <ul className="divide-y rounded-lg border bg-card">{visible.map(row)}</ul>}
         {missing.length > 0 && (
-          <div className="grid gap-2">
+          <div className="grid gap-2 mt-2">
             <button
               type="button"
               aria-expanded={showMissing}
@@ -225,7 +225,7 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
               <ChevronRight
                 className={showMissing ? 'size-4 rotate-90 transition-transform' : 'size-4 transition-transform'}
               />
-              未安装（{missing.length}）
+              未安装 ({missing.length})
             </button>
             {showMissing && <ul className="divide-y rounded-lg border bg-card">{missing.map(row)}</ul>}
           </div>
