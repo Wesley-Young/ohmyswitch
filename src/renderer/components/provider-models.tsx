@@ -53,7 +53,7 @@ export function ProviderModels({
     ),
   );
   const changes = useMemo(
-    () => modelChanges(models, listedModels, remote.data?.models ?? []),
+    () => modelChanges(models, listedModels, remote.data?.models),
     [models, listedModels, remote.data],
   );
   const changeCount = changes.added.length + changes.removed.length;

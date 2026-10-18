@@ -6,10 +6,15 @@ export type ReasoningOption = NonNullable<Model['reasoningOptions']>[number];
 
 /**
  * How the provider's model list changed since it was last reviewed: models listed since then that are not saved,
- * and saved models that were listed then but no longer are. Nothing until the list has been recorded once.
+ * and saved models that were listed then but no longer are. Nothing until the list has been recorded once, nor
+ * while the current list is unknown (still loading or failed to load), which is not the same as an empty list.
  */
-export function modelChanges(saved: readonly Model[], listed: readonly string[] | undefined, remote: readonly Model[]) {
-  if (!listed) return { added: [], removed: [] };
+export function modelChanges(
+  saved: readonly Model[],
+  listed: readonly string[] | undefined,
+  remote: readonly Model[] | undefined,
+) {
+  if (!listed || !remote) return { added: [], removed: [] };
   const listedIds = new Set(listed);
   const savedIds = new Set(saved.map((model) => model.id));
   const remoteIds = new Set(remote.map((model) => model.id));
