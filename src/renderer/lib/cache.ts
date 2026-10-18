@@ -23,6 +23,13 @@ export const refreshFetchedModels = (providerId: string) =>
     queryClient.invalidateQueries(trpc.providers.modelChanges.queryFilter({ providerId })),
   ]);
 
+/**
+ * After another process, such as the CLI, changed the data: refresh what a provider change refreshes, and the
+ * pending import, which is matched against the saved providers.
+ */
+export const refreshStore = () =>
+  Promise.all([refreshProviders(), queryClient.invalidateQueries(trpc.deepLinks.pending.queryFilter())]);
+
 /** After plugins change, refresh the plugin list and everything that lists harnesses. */
 export const refreshPlugins = () =>
   Promise.all([

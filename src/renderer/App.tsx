@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router';
 
 import { DeepLinkListener } from '@/components/deep-link-listener';
 import { PluginListener } from '@/components/plugin-listener';
+import { StoreListener } from '@/components/store-listener';
 import { TopBar } from '@/components/top-bar';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
@@ -33,6 +34,7 @@ export default function App() {
       <Toaster position="bottom-right" />
       <DeepLinkListener />
       <PluginListener />
+      <StoreListener />
     </TooltipProvider>
   );
 }

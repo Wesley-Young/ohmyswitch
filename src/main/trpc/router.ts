@@ -5,12 +5,14 @@ import type { HarnessService } from '#core/harnesses/service.ts';
 import type { IconService } from '#core/icons/service.ts';
 import type { PluginService } from '#core/plugins/service.ts';
 import type { ProviderService } from '#core/providers/service.ts';
+import type { StoreService } from '#core/store/service.ts';
 import { publicProcedure, router } from './procedures.ts';
 import { deepLinkRoutes } from './routes/deep-links.ts';
 import { harnessRoutes } from './routes/harnesses.ts';
 import { iconRoutes } from './routes/icons.ts';
 import { pluginRoutes } from './routes/plugins.ts';
 import { providerRoutes } from './routes/providers.ts';
+import { storeRoutes } from './routes/store.ts';
 
 /** The services behind the routes; the protocol plugin, which injects them, passes them in. */
 export interface RouterServices {
@@ -19,6 +21,7 @@ export interface RouterServices {
   icons: IconService;
   deepLinks: DeepLinkService;
   plugins: PluginService;
+  store: StoreService;
 }
 
 /** Combines every module's routes; this is the complete RPC surface. */
@@ -36,6 +39,7 @@ export function createAppRouter(services: RouterServices, version: string) {
     icons: iconRoutes(services.icons),
     deepLinks: deepLinkRoutes(services.deepLinks),
     plugins: pluginRoutes(services.plugins),
+    store: storeRoutes(services.store),
   });
 }
 

@@ -29,7 +29,7 @@ export type ProtocolOptions = z.infer<typeof protocolOptions>;
  * once every service behind the routes is ready, so no request reaches a half-assembled app.
  */
 export class AppProtocol extends Service {
-  static readonly inject = ['providers', 'harnesses', 'icons', 'deepLinks', 'plugins'];
+  static readonly inject = ['providers', 'harnesses', 'icons', 'deepLinks', 'plugins', 'store'];
   static readonly Config = protocolOptions;
   /** The origin pages are loaded from. */
   readonly origin = appOrigin;
@@ -49,6 +49,7 @@ export class AppProtocol extends Service {
         icons: ctx.icons,
         deepLinks: ctx.deepLinks,
         plugins: ctx.plugins,
+        store: ctx.store,
       },
       this.options.version,
     );

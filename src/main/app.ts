@@ -25,7 +25,8 @@ export const App = {
   name: 'ohmyswitch',
   apply(ctx: Context, config: AppConfig) {
     ctx.plugin(ElectronHttpService);
-    ctx.plugin(StoreService, { dataDir: config.dirs.data });
+    // The window shows the data for as long as it is open, so writes by the CLI are taken in as they happen.
+    ctx.plugin(StoreService, { dataDir: config.dirs.data, watch: true });
     ctx.plugin(ModelsDevService, { cachePath: join(config.dirs.cache, 'models-dev.json') });
     ctx.plugin(IconService, { cacheDir: join(config.dirs.cache, 'icons') });
     ctx.plugin(HarnessService, { home: config.home, env: config.env });
