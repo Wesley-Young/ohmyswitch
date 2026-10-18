@@ -1,10 +1,12 @@
-import { type Choice, command, flag, group, type Scope, selectMany } from '#cli/framework/command.ts';
+import { command, flag, group, type Scope, selectMany } from '#cli/framework/command.ts';
 import { CliError, toCliError } from '#cli/framework/errors.ts';
 import type { Output } from '#cli/framework/output.ts';
 import { listing, plural, shellQuote } from '#cli/framework/text.ts';
 import type { ModelInfo } from '#core/provider.ts';
 import {
+  formatTokens,
   harnessIndex,
+  modelChoice,
   modelStages,
   type ProviderSummary,
   problemsOf,
@@ -15,15 +17,6 @@ import {
 
 const chosen = (scope: Scope) => scope.values.provider as ProviderSummary;
 
-/** Token counts the way the GUI writes them: 128K, 1M, 200K. */
-export function formatTokens(tokens: number) {
-  const unit = tokens % 1024 === 0 ? 1024 : 1000;
-  const trim = (value: number) => String(Math.round(value * 10) / 10);
-  if (tokens >= unit * unit) return `${trim(tokens / unit / unit)}M`;
-  if (tokens >= unit) return `${trim(tokens / unit)}K`;
-  return String(tokens);
-}
-
 /** What a model can do beyond plain text, in a few words. */
 function features(model: ModelInfo) {
   const notes: string[] = [];
@@ -32,17 +25,6 @@ function features(model: ModelInfo) {
   if (model.toolCall === false) notes.push('no tool calls');
   return notes.join(', ');
 }
-
-const modelHint = (model: ModelInfo) =>
-  [model.name, model.contextWindow && `${formatTokens(model.contextWindow)} context`].filter(Boolean).join(', ') ||
-  undefined;
-
-const modelChoice = (model: ModelInfo): Choice<string> => ({
-  value: model.id,
-  keys: [model.id],
-  label: model.id,
-  hint: modelHint(model),
-});
 
 function modelTable(out: Output, models: readonly ModelInfo[], marks?: (model: ModelInfo) => string) {
   out.table(

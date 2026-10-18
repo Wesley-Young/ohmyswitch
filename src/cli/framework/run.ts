@@ -145,6 +145,7 @@ async function execute(command: Command, path: readonly string[], invocation: In
       if (!memos.has(key)) memos.set(key, compute());
       return memos.get(key) as Promise<T>;
     },
+    memoized: <T>(key: string) => memos.get(key) as Promise<T> | undefined,
     progress: (task) => withProgress(session.progress, task),
   };
   // Optional parameters are asked only when the command line gave none of them: `oms provider edit X` asks what
@@ -173,10 +174,17 @@ async function execute(command: Command, path: readonly string[], invocation: In
       continue;
     }
     const required = param.optional ? (param.requiredWhen?.(values) ?? false) : true;
-    const askable = session.interactive && param.ask;
+    const askable = session.interactive && (typeof param.ask === 'function' ? param.ask(values) : param.ask);
     if (askable && (required || (!param.requiredWhen && !explicitOptional))) {
       const answer: Answer = await ask(param, required, scope);
       prompted = true;
+      if (answer.flag) {
+        // "All of them", answered by a flag the command reads instead.
+        values[answer.flag] = true;
+        written.set(answer.flag, []);
+        values[key] = param.multiple ? [] : undefined;
+        continue;
+      }
       values[key] = answer.value ?? (param.multiple ? [] : undefined);
       if (answer.value !== undefined) written.set(key, answer.raws);
       continue;

@@ -1,7 +1,7 @@
 import * as prompts from '@clack/prompts';
 
-import type { Choice, ParamSpec, Scope } from './command.ts';
-import { Cancelled, CliError, ParamError } from './errors.ts';
+import type { Choice, ParamSpec, Scope, Suggestions } from './command.ts';
+import { Cancelled, CliError, ParamError, toCliError } from './errors.ts';
 
 import { emitKeypressEvents } from 'node:readline';
 
@@ -13,6 +13,8 @@ export interface Answer {
   value: unknown;
   /** Raw text for text parameters; the first key of each chosen option for selects. */
   raws: string[];
+  /** A flag parameter the answer amounts to, such as "all of them" (`Suggestions.all`); `value` is then unused. */
+  flag?: string;
 }
 
 const unchanged: Answer = { value: undefined, raws: [] };
@@ -102,6 +104,8 @@ export async function ask(param: ParamSpec, required: boolean, scope: Scope): Pr
       return { value: parseRaw(param, raw ?? ''), raws: [''] };
     }
     case 'list': {
+      const suggested = await suggestionsOf(param, scope);
+      if (suggested) return askSuggested(param, required, suggested);
       const raw = await prompted(() =>
         prompts.text({
           message: `${param.summary} (comma-separated)`,
@@ -163,31 +167,65 @@ async function askMany(param: ParamSpec, required: boolean, scope: Scope): Promi
   const choices = await choicesOf(param, required, scope);
   if (!choices) return unchanged;
   const initial = ((await param.initial?.(scope)) ?? []) as readonly unknown[];
+  const chosen = await pickSeveral(param.summary, choices, (choice) => initial.includes(choice.value), required);
+  return {
+    value: chosen.map((choice) => choice.value),
+    raws: chosen.map((choice) => choice.keys[0] ?? choice.label),
+  };
+}
+
+/** Tick options in a list, filterable when long; returns them in list order, not the order they were ticked. */
+async function pickSeveral<T>(
+  message: string,
+  choices: readonly Choice<T>[],
+  ticked: (choice: Choice<T>) => boolean,
+  required: boolean,
+) {
   const options = choices.map(optionOf);
-  const initialValues = choices.flatMap((choice, index) => (initial.includes(choice.value) ? [index] : []));
+  const initialValues = choices.flatMap((choice, index) => (ticked(choice) ? [index] : []));
   for (;;) {
     const indexes = await prompted(() =>
       options.length > filterableFrom
         ? prompts.autocompleteMultiselect({
-            message: param.summary,
+            message,
             options,
             initialValues,
             required: false,
             placeholder: 'Type to filter',
           })
-        : prompts.multiselect({ message: param.summary, options, initialValues, required: false }),
+        : prompts.multiselect({ message, options, initialValues, required: false }),
     );
     if (required && !indexes.length) {
       prompts.log.warn('Select at least one (space toggles an option).');
       continue;
     }
-    // In list order, not the order they were ticked.
-    const chosen = indexes.toSorted((a, b) => a - b).map((index) => choices[index] as Choice<unknown>);
-    return {
-      value: chosen.map((choice) => choice.value),
-      raws: chosen.map((choice) => choice.keys[0] ?? choice.label),
-    };
+    return indexes.toSorted((a, b) => a - b).map((index) => choices[index] as Choice<T>);
   }
+}
+
+/**
+ * What a list parameter offers to pick from, or undefined to type the values instead: when it offers nothing, or
+ * getting the offer failed, which is shown so the user knows why.
+ */
+async function suggestionsOf(param: ParamSpec, scope: Scope) {
+  if (!param.suggest) return undefined;
+  try {
+    const suggested = await param.suggest(scope);
+    return suggested.choices.length ? suggested : undefined;
+  } catch (error) {
+    if (error instanceof Cancelled) throw error;
+    scope.session.out.warn(`${toCliError(error).message.replace(/\.$/, '')}. Type them instead.`);
+    return undefined;
+  }
+}
+
+async function askSuggested(param: ParamSpec, required: boolean, suggested: Suggestions): Promise<Answer> {
+  const ticked = new Set(suggested.ticked ?? []);
+  const chosen = await pickSeveral(param.summary, suggested.choices, (choice) => ticked.has(choice.value), required);
+  if (suggested.all && chosen.length === suggested.choices.length)
+    return { value: undefined, raws: [], flag: suggested.all };
+  const raws = chosen.map((choice) => choice.value);
+  return { value: raws.map((raw) => parseRaw(param, raw)), raws };
 }
 
 /** Ask a yes/no question, no by default. */

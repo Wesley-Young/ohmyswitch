@@ -11,9 +11,10 @@ import {
   text,
   textList,
 } from '#cli/framework/command.ts';
-import { CliError } from '#cli/framework/errors.ts';
+import { CliError, toCliError } from '#cli/framework/errors.ts';
 import { listing, plural, shellQuote } from '#cli/framework/text.ts';
 import { parseWith } from '#cli/framework/validate.ts';
+import type { Endpoint } from '#core/endpoints.ts';
 import { baseUrl, iconUrl, providerName } from '#core/provider.ts';
 import { createProviderInput, updateProviderInput } from '#core/providers/schemas.ts';
 import {
@@ -22,6 +23,7 @@ import {
   endpointDetails,
   endpointLabels,
   harnessIndex,
+  modelChoice,
   modelStages,
   noProviders,
   type ProviderSummary,
@@ -131,6 +133,26 @@ const show = command({
   },
 });
 
+/** The connection typed so far while adding a provider. */
+type DraftConnection = { baseUrl: string; endpoint: Endpoint; apiKey: string };
+
+const draftKey = 'draft-models';
+
+/** The models the provider being added serves, fetched once per run with the connection typed so far. */
+function draftModels(scope: Scope) {
+  return scope.memo(draftKey, async () => {
+    const draft = scope.values as DraftConnection;
+    const ctx = await scope.services();
+    try {
+      return await scope.progress((stage) => ctx.providers.listModels(draft, { onStage: modelStages(draft, stage) }));
+    } catch (error) {
+      throw new CliError('bad_gateway', `Could not list models: ${toCliError(error).message}`);
+    }
+  });
+}
+
+type DraftModels = Awaited<ReturnType<typeof draftModels>>;
+
 const add = command({
   name: 'add',
   summary: 'Add a provider',
@@ -149,6 +171,22 @@ const add = command({
       choices: endpointChoices,
     }),
     apiKey: secret({ summary: 'API key', parse: (raw) => parseWith(createProviderInput.shape.apiKey, raw) }),
+    allModels: flag({ summary: 'Fetch the models the provider serves and keep all of them' }),
+    // Right after the key: fetching the list needs only the connection, and shows at once if the key is wrong.
+    models: textList({
+      summary: 'Models',
+      flag: 'model',
+      placeholder: 'id',
+      details: 'By id, with details from models.dev; in a terminal, picked from the list the provider returns',
+      optional: true,
+      ask: (values) => !values.allModels,
+      parse: (raw) => parseWith(modelId, raw),
+      // Like the GUI's picker for a provider without models: everything starts ticked.
+      async suggest(scope) {
+        const { models } = await draftModels(scope);
+        return { choices: models.map(modelChoice), ticked: models.map((model) => model.id), all: 'allModels' };
+      },
+    }),
     iconUrl: text({
       summary: 'Icon URL',
       placeholder: 'url',
@@ -156,29 +194,39 @@ const add = command({
       optional: true,
       parse: (raw) => parseWith(iconUrl, raw),
     }),
-    models: textList({
-      summary: 'Model IDs',
-      flag: 'model',
-      placeholder: 'id',
-      optional: true,
-      parse: (raw) => parseWith(modelId, raw),
-    }),
   },
   async run(values, scope) {
+    if (values.allModels && values.models.length) {
+      throw new CliError('usage', 'Pass either --model or --all-models', 'Run "oms provider add --help" for usage.');
+    }
     await assertNameFree(scope, values.name);
     const ctx = await scope.services();
+    // Models picked from the provider's list are saved with what the list says about them, and the list counts as
+    // reviewed. Models given by id (or typed after the list failed) get their details from models.dev.
+    let fetched: DraftModels | undefined;
+    if (values.allModels) fetched = await draftModels(scope);
+    else fetched = await scope.memoized<DraftModels>(draftKey)?.catch(() => undefined);
     const input = createProviderInput.parse({
       name: values.name,
       baseUrl: values.baseUrl,
       endpoint: values.endpoint,
       apiKey: values.apiKey,
       iconUrl: values.iconUrl,
-      modelIds: values.models,
+      ...(fetched
+        ? {
+            listed: fetched.models,
+            selected: values.allModels ? fetched.models.map((model) => model.id) : values.models,
+          }
+        : { modelIds: values.models }),
     });
-    return scope.progress((stage) => ctx.providers.create(input, { onStage: modelStages(input, stage) }));
+    const provider = await scope.progress((stage) =>
+      ctx.providers.create(input, { onStage: modelStages(input, stage) }),
+    );
+    return { ...provider, ...(fetched?.metadataError ? { metadataError: fetched.metadataError } : {}) };
   },
   render(provider, out) {
     out.success(`Added "${provider.name}" with ${plural(provider.modelCount, 'model')}.`);
+    if ('metadataError' in provider) out.warn('models.dev could not be read, so some model details may be missing.');
     if (!provider.modelCount) {
       out.hint(
         `Some harnesses need at least one model. Choose them with "oms model pick ${shellQuote(provider.name)}".`,

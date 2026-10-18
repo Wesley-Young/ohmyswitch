@@ -6,6 +6,7 @@ import type { Endpoint } from '#core/endpoints.ts';
 import { endpoints } from '#core/endpoints.ts';
 import type { ApplicationState } from '#core/harnesses/applications.ts';
 import type { HarnessFailure, HarnessService } from '#core/harnesses/service.ts';
+import type { ModelInfo } from '#core/provider.ts';
 import type { ModelStage, ProviderService } from '#core/providers/service.ts';
 
 export type ProviderSummary = ReturnType<ProviderService['list']>[number];
@@ -108,6 +109,26 @@ export function problemsOf(
 ): HarnessProblem[] {
   return failures.map((failure) => ({ ...refOf(failure.harnessId, harnesses), message: failure.message }));
 }
+
+/** Token counts the way the GUI writes them: 128K, 1M, 200K. */
+export function formatTokens(tokens: number) {
+  const unit = tokens % 1024 === 0 ? 1024 : 1000;
+  const trim = (value: number) => String(Math.round(value * 10) / 10);
+  if (tokens >= unit * unit) return `${trim(tokens / unit / unit)}M`;
+  if (tokens >= unit) return `${trim(tokens / unit)}K`;
+  return String(tokens);
+}
+
+const modelHint = (model: ModelInfo) =>
+  [model.name, model.contextWindow && `${formatTokens(model.contextWindow)} context`].filter(Boolean).join(', ') ||
+  undefined;
+
+export const modelChoice = (model: ModelInfo): Choice<string> => ({
+  value: model.id,
+  keys: [model.id],
+  label: model.id,
+  hint: modelHint(model),
+});
 
 /** Spinner messages for the steps of getting a provider's models. */
 export function modelStages(provider: { baseUrl: string }, stage: Stage) {

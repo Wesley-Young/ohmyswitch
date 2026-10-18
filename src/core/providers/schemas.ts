@@ -23,6 +23,20 @@ export const createProviderInput = connectionInput.extend({
     .max(2000)
     .optional()
     .transform((ids) => (ids ? [...new Set(ids)] : undefined)),
+  /**
+   * The provider's model list as fetched while adding it (`ProviderService.listModels`), recorded as reviewed. With
+   * it, the models are the ids in `selected` and `modelIds` is not used.
+   */
+  listed: z
+    .array(modelInfo)
+    .max(2000)
+    .optional()
+    .transform((models) => (models ? [...new Map(models.map((model) => [model.id, model])).values()] : undefined)),
+  selected: z
+    .array(z.string().min(1).max(256))
+    .max(2000)
+    .optional()
+    .transform((ids) => (ids ? [...new Set(ids)] : undefined)),
 });
 
 export const updateProviderInput = connectionInput.extend(providerIdInput.shape);

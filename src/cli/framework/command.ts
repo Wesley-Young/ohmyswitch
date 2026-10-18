@@ -43,6 +43,8 @@ export interface Scope {
    * `run` need: later calls with the same key get the first result.
    */
   memo<T>(key: string, compute: () => Promise<T>): Promise<T>;
+  /** What `memo` computed for the key so far, without computing it: undefined when nothing asked for it yet. */
+  memoized<T>(key: string): Promise<T> | undefined;
   /** Run a slow task, showing each stage it reports in a spinner while it runs. */
   progress<T>(task: (stage: Stage) => Promise<T>): Promise<T>;
 }
@@ -60,6 +62,21 @@ export interface RunScope extends Scope {
 
 export type ParamKind = 'text' | 'secret' | 'list' | 'select' | 'flag';
 
+export type ParamValues = Readonly<Record<string, unknown>>;
+
+/** Values a list parameter offers when prompting, to pick instead of type. */
+export interface Suggestions {
+  /** The values to offer, as their raw strings, which `parse` takes. */
+  choices: readonly Choice<string>[];
+  /** Values ticked to begin with. */
+  ticked?: readonly string[];
+  /**
+   * A flag parameter that means "all of them": when every choice is picked, the answer is that flag instead of the
+   * whole list, so the equivalent command stays short.
+   */
+  all?: string;
+}
+
 /** The runtime description of a parameter; the builders below fill in defaults and carry the value type. */
 export interface ParamSpec {
   kind: ParamKind;
@@ -75,9 +92,12 @@ export interface ParamSpec {
   details?: string;
   optional: boolean;
   /** For optional parameters: whether a value is needed after all, given the parameters before it. */
-  requiredWhen?: (values: Readonly<Record<string, unknown>>) => boolean;
-  /** Whether prompting may ask for it. Flags are never asked; commands confirm through `RunScope.confirm`. */
-  ask: boolean;
+  requiredWhen?: (values: ParamValues) => boolean;
+  /**
+   * Whether prompting may ask for it, possibly depending on the parameters before it. Flags are never asked;
+   * commands confirm through `RunScope.confirm`.
+   */
+  ask: boolean | ((values: ParamValues) => boolean);
   multiple: boolean;
   /** Text, list items and secrets: turn the raw string into the value, throwing a ParamError. */
   parse?: (raw: string) => unknown;
@@ -89,6 +109,11 @@ export interface ParamSpec {
   initial?: (scope: Scope) => unknown;
   /** Text: a placeholder in the prompt. */
   hint?: string;
+  /**
+   * Lists: values to pick from when prompting. If getting them fails, the failure is shown and the values are
+   * typed instead. The command line still takes any value `parse` accepts.
+   */
+  suggest?: (scope: Scope) => Promise<Suggestions>;
 }
 
 /** A parameter whose resolved value has type `V`. */
@@ -107,7 +132,7 @@ interface CommonOptions {
   short?: string;
   placeholder?: string;
   details?: string;
-  ask?: boolean;
+  ask?: ParamSpec['ask'];
 }
 
 type Requirement = { optional?: false } | { optional: true; requiredWhen?: ParamSpec['requiredWhen'] };
@@ -136,8 +161,13 @@ export function text(options: TextOptions<unknown> & Requirement): ParamSpec {
   return { parse: (raw: string) => raw, ...base('text', options) };
 }
 
-/** Repeatable strings: `--model a --model b`, or a comma-separated answer when prompting. Unset is empty. */
-export function textList<T = string>(options: TextOptions<T> & { optional: true }): Param<T[]> {
+/**
+ * Repeatable strings: `--model a --model b`. When prompting, picked from `suggest` when it offers any, otherwise a
+ * comma-separated answer. Unset is empty.
+ */
+export function textList<T = string>(
+  options: TextOptions<T> & { optional: true; suggest?: ParamSpec['suggest'] },
+): Param<T[]> {
   return { parse: (raw: string) => raw, ...base('list', options), multiple: true };
 }
 

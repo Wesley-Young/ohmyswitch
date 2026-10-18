@@ -8,7 +8,7 @@ import type {} from '#core/models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { candidateId, groupImports, type ImportCandidate, uniqueName, withImportedModels } from './harness-import.ts';
-import { fetchModelCatalog } from './model-catalog.ts';
+import { type CatalogSource, fetchModelCatalog } from './model-catalog.ts';
 import { changesSince, pickedModels } from './model-list.ts';
 import type {
   CreateProviderInput,
@@ -49,8 +49,7 @@ export interface ModelProgress {
   onStage?: (stage: ModelStage) => void;
 }
 
-const connectionOf = (provider: StoredProvider) =>
-  JSON.stringify([provider.baseUrl, provider.endpoint, provider.apiKey]);
+const connectionOf = (source: CatalogSource) => JSON.stringify([source.baseUrl, source.endpoint, source.apiKey]);
 
 export class ProviderService extends Service {
   static readonly inject = ['store', 'harnesses', 'http', 'modelsDev', 'icons'];
@@ -258,8 +257,19 @@ export class ProviderService extends Service {
     });
   }
 
+  /**
+   * The models a provider serves, by a connection that is not saved yet, with metadata from models.dev where it is
+   * available: for choosing them while adding the provider. Nothing is recorded; `create` takes the list back.
+   */
+  listModels(connection: CatalogSource, progress: ModelProgress = {}) {
+    return this.catalog(connection, progress);
+  }
+
   async create(input: CreateProviderInput, progress: ModelProgress = {}) {
-    const models = input.modelIds?.length ? await this.initialModels(input.modelIds, progress) : [];
+    const { listed } = input;
+    let models: ModelInfo[] = [];
+    if (listed) models = pickedModels([], listed, input.selected ?? []);
+    else if (input.modelIds?.length) models = await this.initialModels(input.modelIds, progress);
     const provider: StoredProvider = {
       id: randomUUID(),
       name: input.name,
@@ -268,6 +278,8 @@ export class ProviderService extends Service {
       apiKey: input.apiKey,
       ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
       models,
+      // The list the user chose from counts as reviewed, so the models left out are not offered as new later.
+      ...(listed ? { listedModels: listed.map((model) => model.id) } : {}),
       harnesses: {},
       createdAt: new Date().toISOString(),
     };
@@ -277,6 +289,8 @@ export class ProviderService extends Service {
       }
       draft.providers.push(provider);
     });
+    if (listed)
+      this.listings.set(provider.id, { connection: connectionOf(provider), models: listed, fetchedAt: Date.now() });
     return this.summary(provider);
   }
 
@@ -339,25 +353,29 @@ export class ProviderService extends Service {
    * The models the provider lists now, with metadata from models.dev where it is available. The list is kept for
    * `listing`.
    */
-  private async remote(
-    providerId: string,
-    progress: ModelProgress,
-  ): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+  private async remote(providerId: string, progress: ModelProgress) {
     const provider = this.find(this.ctx.store.data.providers, providerId);
     const connection = connectionOf(provider);
+    const result = await this.catalog(provider, progress);
+    this.listings.set(providerId, { connection, models: result.models, fetchedAt: Date.now() });
+    return result;
+  }
+
+  /** The models a connection serves, with metadata from models.dev where it is available. */
+  private async catalog(
+    source: CatalogSource,
+    progress: ModelProgress,
+  ): Promise<{ models: ModelInfo[]; metadataError?: string }> {
     progress.onStage?.('list');
-    const { models } = await fetchModelCatalog(provider, this.ctx.http.fetch, AbortSignal.timeout(20_000));
-    let result: { models: ModelInfo[]; metadataError?: string };
+    const { models } = await fetchModelCatalog(source, this.ctx.http.fetch, AbortSignal.timeout(20_000));
     try {
       progress.onStage?.('details');
       const index = await this.ctx.modelsDev.index();
-      result = { models: models.map((model) => index.enrich(model)) };
+      return { models: models.map((model) => index.enrich(model)) };
     } catch (error) {
       this.logger.warn('Failed to load models.dev', error);
-      result = { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
+      return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
     }
-    this.listings.set(providerId, { connection, models: result.models, fetchedAt: Date.now() });
-    return result;
   }
 
   /** Remember the provider's model list as reviewed. A provider deleted meanwhile is skipped. */
