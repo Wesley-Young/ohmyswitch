@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { endpoints } from '#core/endpoints.ts';
+import { harnessId } from '#core/harnesses/types.ts';
 import { baseUrl, iconUrl, modelInfo, providerName } from '#core/provider.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
@@ -57,8 +58,20 @@ export const reviewModelsInput = providerIdInput.extend({
     .transform((ids) => [...new Set(ids)]),
 });
 
+/** One entry to import from a harness: the harness and the key of the entry in its config. */
+const importSource = z.object({ harnessId, key: z.string().min(1).max(64) });
+
+/** Import candidates, each named by the harness entries it was found in, as `harnessImports` lists them. */
+export const importFromHarnessesInput = z.object({
+  candidates: z
+    .array(z.object({ sources: z.array(importSource).min(1).max(16) }))
+    .min(1, { error: '请选择要导入的供应商' })
+    .max(200),
+});
+
 export type CreateProviderInput = z.infer<typeof createProviderInput>;
 export type ReviewModelsInput = z.infer<typeof reviewModelsInput>;
+export type ImportFromHarnessesInput = z.infer<typeof importFromHarnessesInput>;
 export type UpdateProviderInput = z.infer<typeof updateProviderInput>;
 export type SetModelsInput = z.infer<typeof setModelsInput>;
 export type ReorderInput = z.infer<typeof reorderInput>;

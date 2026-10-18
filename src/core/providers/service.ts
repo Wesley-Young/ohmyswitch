@@ -7,9 +7,11 @@ import type {} from '#core/icons/service.ts';
 import type {} from '#core/models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
+import { candidateId, groupImports, type ImportCandidate, uniqueName, withImportedModels } from './harness-import.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
 import type {
   CreateProviderInput,
+  ImportFromHarnessesInput,
   ReorderInput,
   ReviewModelsInput,
   SetModelsInput,
@@ -99,6 +101,84 @@ export class ProviderService extends Service {
       );
       provider.listedModels = input.listed;
     });
+  }
+
+  /**
+   * What could be imported from the harness configs, grouped into providers, and the harnesses that could not be
+   * read. API keys stay here; they are read again when importing.
+   */
+  async harnessImports() {
+    const { sources, failures } = await this.ctx.harnesses.importSources();
+    const candidates = groupImports(sources, this.ctx.store.data.providers).map((candidate) => ({
+      id: candidateId(candidate.sources),
+      sources: candidate.sources,
+      name: candidate.name,
+      baseUrl: candidate.connection?.baseUrl,
+      endpoint: candidate.connection?.endpoint,
+      modelCount: candidate.models.length,
+      target: candidate.target,
+      reason: candidate.reason,
+    }));
+    return { candidates, failures };
+  }
+
+  /**
+   * Import the chosen candidates: each becomes a provider, or joins the existing one with the same connection, and
+   * takes over its entries, which are then rewritten the way ohmyswitch writes them. The configs are read again;
+   * if a chosen candidate changed meanwhile, nothing is imported. Harness failures do not undo the import.
+   */
+  async importFromHarnesses(input: ImportFromHarnessesInput) {
+    const { sources } = await this.ctx.harnesses.importSources();
+    const found = new Map(
+      groupImports(sources, this.ctx.store.data.providers).map((candidate) => [
+        candidateId(candidate.sources),
+        candidate,
+      ]),
+    );
+    const chosen = input.candidates.map(({ sources }) => found.get(candidateId(sources)));
+    const changed = () => new AppError('conflict', 'Harness 的配置刚被修改，请重新选择');
+    if (chosen.some((candidate) => !candidate?.connection || candidate.reason)) throw changed();
+    const enrich = await this.enricher();
+    const ids = await this.ctx.store.update((draft) => {
+      const names = new Set(draft.providers.map((provider) => provider.name));
+      return (chosen as ImportCandidate[]).map((candidate) => {
+        const connection = candidate.connection as NonNullable<ImportCandidate['connection']>;
+        const applications = Object.fromEntries(
+          candidate.sources.map((source) => [source.harnessId, { key: source.key }]),
+        );
+        const models = candidate.models.map(enrich);
+        if (candidate.target) {
+          const target = draft.providers.find((provider) => provider.id === candidate.target?.providerId);
+          if (!target) throw changed();
+          Object.assign(target.harnesses, applications);
+          target.models = withImportedModels(target.models, models);
+          return target.id;
+        }
+        const name = uniqueName(candidate.name, names);
+        names.add(name);
+        const provider: StoredProvider = {
+          id: randomUUID(),
+          name,
+          ...connection,
+          models,
+          harnesses: applications,
+          createdAt: new Date().toISOString(),
+        };
+        draft.providers.push(provider);
+        return provider.id;
+      });
+    });
+    const failures = new Map<string, HarnessFailure>();
+    for (const id of new Set(ids)) {
+      const provider = this.find(this.ctx.store.data.providers, id);
+      for (const failure of await this.ctx.harnesses.syncProvider(provider)) {
+        if (!failures.has(failure.harnessId)) failures.set(failure.harnessId, failure);
+      }
+    }
+    return {
+      providers: [...new Set(ids)].map((id) => this.summary(this.find(this.ctx.store.data.providers, id))),
+      harnessFailures: [...failures.values()],
+    };
   }
 
   /**

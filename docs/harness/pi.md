@@ -115,6 +115,23 @@ E 中 Pi 没有的值（如 `default`）忽略。
 
 - 顺序：ohmyswitch 的条目按供应商列表的顺序排列，只在它们已经占据的位置之间调换；用户自己的条目、条目之间的逗号和空白都不动。条目上方单独成行的注释跟着条目移动，写在上一个条目同一行末尾的注释留在原处。写入条目时在同一次编辑中排好顺序（第一次应用的新条目直接排到它的位置）；调整供应商顺序后，单独重排一次。Pi 1.3.0 的模型选择器按 provider key 的字母顺序排列（`modes/interactive/components/model-selector.js` 的 `sortModels`），所以这个顺序在 Pi 的界面上看不出来（版本相关）。
 
+## 导入
+
+「从 Harness 导入」读取 `models.json` 中不属于 ohmyswitch 的条目，把它们导入为供应商并接管。key 是内置供应商 id 的条目是对内置供应商的覆盖，不列出。
+
+| ohmyswitch 字段 | 来源 | 不能导入的情况 |
+|---|---|---|
+| 名称 | `name`，没有时用 key | — |
+| 端点 | 按「供应商字段」中的表由 `api` 反查 | 没有 `api`，或不在表中 |
+| Base URL | `baseUrl` 去掉表中该端点的版本路径 | `baseUrl` 不以这个路径结尾（例如 `.../api/paas/v4`），或 ohmyswitch 写回时会不同 |
+| API Key | `apiKey` 按「apiKey 的转义」的反向规则还原（`$$` → `$`，`$!` → `!`） | 没有 `apiKey`（Key 可能在 `auth.json`，不读）；以 `!` 开头（命令，不执行）；引用了环境变量（`$NAME`、`${NAME}`，不读取，以免接管后把 Key 明文写回） |
+| 模型 | `models` 的 `id`、`name`、`contextWindow`、`maxTokens`、`input`、`reasoning`，`compat.requiresReasoningContentOnAssistantMessages` 为 `true` 时记为 `interleaved.field: reasoning_content`；无效的字段不导入 | — |
+
+- `thinkingLevelMap` 不反推，模型的其他信息由 models.dev 补全（只补缺失的字段）。
+- 不能导入的条目也列出，附上原因，不能勾选。
+- 导入时重新读取文件，与列出时不一致就停止。导入后 key 记录为 ohmyswitch 的，并立即按上文规则重写条目：ohmyswitch 负责的字段换成 ohmyswitch 生成的值（例如 `thinkingLevelMap` 按 models.dev 的信息重新生成），其他字段保留。
+- 同一 Base URL、端点和 API Key 的条目，在不同 Harness 中的合并为一个供应商；已有这样的 ohmyswitch 供应商且它没有应用到这些 Harness 时，并入它（只增加它没有的模型）；已经应用了的，条目算作重复，不能导入。同一 Harness 中连接相同的多个条目分别导入。
+
 ## 已知限制
 
 - `openai-completions` 的推理参数格式（`compat.thinkingFormat`）由 Pi 按 provider id 和域名自动判断。经中转站访问 DeepSeek、GLM、Qwen 等时判断不出来，会按 OpenAI 格式发送 `reasoning_effort`。models.dev 没有对应数据，暂不处理。

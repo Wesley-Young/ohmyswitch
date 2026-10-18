@@ -8,6 +8,7 @@ import type { StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { type ApplicationState, assertWritable, chooseKey, entryState, worseState } from './applications.ts';
 import { ConfigEditor, readConfigText } from './editor.ts';
+import type { ImportSource } from './import.ts';
 import {
   type HarnessConfigFile,
   type HarnessDescriptor,
@@ -212,6 +213,49 @@ export class HarnessService extends Service {
       const failure = await this.track(harnessId, (harness) => this.remove(provider, harness));
       if (failure) throw new AppError('precondition_failed', failure.message);
     }
+  }
+
+  /**
+   * Provider entries in the harness configs that could be imported: every entry ohmyswitch does not own in a file
+   * whose adapter reads entries back. Entries under a built-in provider's id extend that provider rather than
+   * describe one, so they are left out. A harness that cannot be read is reported, not thrown.
+   */
+  async importSources() {
+    const sources: ImportSource[] = [];
+    const failures: HarnessFailure[] = [];
+    for (const harness of this.harnesses()) {
+      let files: HarnessConfigFile[];
+      try {
+        files = (await harness.configFiles(this.environment)).filter((file) => file.adapter.importEntry);
+      } catch {
+        // Harnesses that do not import may not be writable now either; that is no reason to report them here.
+        continue;
+      }
+      if (!files.length) continue;
+      try {
+        const owned = new Set(
+          this.ctx.store.data.providers.flatMap((provider) => provider.harnesses[harness.id]?.key ?? []),
+        );
+        const catalog = files.some((file) => file.adapter.reservesCatalogProviders)
+          ? await this.catalogProviderIds(harness)
+          : new Set<string>();
+        const found: ImportSource[] = [];
+        for (const { adapter, path } of files) {
+          const { importEntry } = adapter;
+          if (!importEntry) continue;
+          for (const [key, entry] of Object.entries(adapter.readProviders(await readConfigText(path)))) {
+            if (owned.has(key) || adapter.reservedKeys.has(key) || catalog.has(key)) continue;
+            // A harness's files share one key, so the first file's entry stands for it.
+            if (found.some((source) => source.key === key)) continue;
+            found.push({ harnessId: harness.id, key, entry: importEntry(entry) });
+          }
+        }
+        sources.push(...found);
+      } catch (error) {
+        failures.push({ harnessId: harness.id, message: error instanceof AppError ? error.message : '无法读取配置' });
+      }
+    }
+    return { sources, failures };
   }
 
   /**

@@ -112,3 +112,19 @@ OpenCode 用 variants 表示推理档位，每个 variant 是 `{ id, settings?, 
 取消应用时删除 `providers.<key>` 整个条目。
 
 - 顺序：ohmyswitch 的条目按供应商列表的顺序排列，只在它们已经占据的位置之间调换；用户自己的条目、条目之间的逗号和空白都不动。条目上方单独成行的注释跟着条目移动，写在上一个条目同一行末尾的注释留在原处。写入条目时在同一次编辑中排好顺序（第一次应用的新条目直接排到它的位置）；调整供应商顺序后，单独重排一次。OpenCode 的界面是否按配置中的顺序显示供应商尚未核对。
+
+## 导入
+
+「从 Harness 导入」读取全局配置 `providers` 中不属于 ohmyswitch 的条目，把它们导入为供应商并接管。key 是 models.dev 目录或插件注册的供应商 id 的条目是对内置供应商的覆盖，不列出；models.dev 目录不可用时，OpenCode 不参与导入并提示。
+
+| ohmyswitch 字段 | 来源 | 不能导入的情况 |
+|---|---|---|
+| 名称 | `name`，没有时用 key | — |
+| 端点 | 按「供应商字段」中的表由 `package` 反查 | 没有 `package`，或不在表中 |
+| Base URL | `settings.baseURL` 去掉表中该端点的版本路径 | 不以这个路径结尾，或 ohmyswitch 写回时会不同 |
+| API Key | `settings.apiKey`（原样） | 没有（Key 可能在凭据数据库，不读）；含 `{env:` 或 `{file:`（不读取，以免接管后把 Key 明文写回） |
+| 模型 | `models` 的键作为 `id`；`name`、`limit.context`、`limit.output`、`capabilities.input`、`capabilities.tools`、`compatibility.reasoningField`；无效的字段不导入 | — |
+
+- 名称、`settings.baseURL`、模型 id 或名称中含 `{env:`、`{file:` 时不能导入：写回时会被拒绝（见「文件格式」）。
+- `variants` 不反推，模型的其他信息由 models.dev 补全（只补缺失的字段）。
+- 不能导入的条目也列出，附上原因；导入后的处理与 Pi 相同（见 `docs/harness/pi.md` 的「导入」）。

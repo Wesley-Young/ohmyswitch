@@ -2,6 +2,13 @@ import type { Endpoint } from '#core/endpoints.ts';
 import { AppError } from '#core/errors.ts';
 import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
 import {
+  endpointBy,
+  type HarnessImport,
+  importedBaseUrl,
+  importedModels,
+  notImportable,
+} from '#core/harnesses/import.ts';
+import {
   isJsonObject,
   type JsonObject,
   parseJsonc,
@@ -179,11 +186,84 @@ function reorderPiProviders(text: string | undefined, keys: readonly string[]) {
   return reorderJsoncProperties(text, ['providers'], keys);
 }
 
+const envName = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * The literal value of a Pi config value, undoing `escapePiConfigValue`, or why it is not a literal. Follows Pi's
+ * template parser: a leading `!` runs a command, `$NAME` and `${NAME}` read the environment, and `$$` and `$!` are
+ * a literal `$` and `!`; any other `$` is itself.
+ */
+export function unescapePiConfigValue(value: string): { literal: string } | { reason: string } {
+  if (value.startsWith('!')) return { reason: 'API Key 来自命令' };
+  const fromEnv = { reason: 'API Key 来自环境变量' };
+  let literal = '';
+  let index = 0;
+  while (index < value.length) {
+    const dollar = value.indexOf('$', index);
+    if (dollar < 0) {
+      literal += value.slice(index);
+      break;
+    }
+    literal += value.slice(index, dollar);
+    const next = value[dollar + 1];
+    if (next === '$' || next === '!') {
+      literal += next;
+      index = dollar + 2;
+    } else if (next === '{' && value.indexOf('}', dollar + 2) >= 0) {
+      const end = value.indexOf('}', dollar + 2);
+      if (envName.test(value.slice(dollar + 2, end))) return fromEnv;
+      literal += value.slice(dollar, end + 1);
+      index = end + 1;
+    } else if (next !== undefined && /[A-Za-z_]/.test(next)) {
+      return fromEnv;
+    } else {
+      literal += '$';
+      index = dollar + 1;
+    }
+  }
+  return { literal };
+}
+
+/** A Pi provider entry as an ohmyswitch provider; see 「导入」 in the contract. */
+function importPiEntry(entry: unknown): HarnessImport {
+  if (!isJsonObject(entry)) return notImportable('格式不正确');
+  const name = typeof entry.name === 'string' ? entry.name : undefined;
+  const endpoint = endpointBy(apis, 'api', entry.api);
+  if (!endpoint) return notImportable(entry.api === undefined ? '没有指定 api' : `不支持 ${String(entry.api)}`, name);
+  const root = importedBaseUrl(entry.baseUrl, apis[endpoint].path);
+  if ('reason' in root) return notImportable(root.reason, name);
+  if (typeof entry.apiKey !== 'string' || !entry.apiKey.trim())
+    return notImportable('API Key 不在 models.json 中', name);
+  const apiKey = unescapePiConfigValue(entry.apiKey);
+  if ('reason' in apiKey) return notImportable(apiKey.reason, name);
+  const models = (Array.isArray(entry.models) ? entry.models : []).filter(isJsonObject).map((model) => ({
+    id: model.id,
+    name: model.name,
+    contextWindow: model.contextWindow,
+    maxOutput: model.maxTokens,
+    reasoning: model.reasoning,
+    input: model.input,
+    interleavedField:
+      isJsonObject(model.compat) && model.compat.requiresReasoningContentOnAssistantMessages === true
+        ? 'reasoning_content'
+        : undefined,
+  }));
+  return {
+    importable: true,
+    ...(name ? { name } : {}),
+    baseUrl: root.baseUrl,
+    endpoint,
+    apiKey: apiKey.literal.trim(),
+    models: importedModels(models),
+  };
+}
+
 export const piAdapter: HarnessAdapter = {
   readProviders: readPiProviders,
   entry: piProviderEntry,
   write: writePiProvider,
   reorder: reorderPiProviders,
+  importEntry: importPiEntry,
   reservedKeys: builtinProviders,
   // The file holds API keys.
   newFileMode: 0o600,

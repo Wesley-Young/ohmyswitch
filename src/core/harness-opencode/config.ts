@@ -2,6 +2,13 @@ import type { Endpoint } from '#core/endpoints.ts';
 import { AppError } from '#core/errors.ts';
 import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
 import {
+  endpointBy,
+  type HarnessImport,
+  importedBaseUrl,
+  importedModels,
+  notImportable,
+} from '#core/harnesses/import.ts';
+import {
   isJsonObject,
   type JsonObject,
   parseJsonc,
@@ -144,11 +151,59 @@ function reorderOpenCodeProviders(text: string | undefined, keys: readonly strin
   return reorderJsoncProperties(text, ['providers'], keys);
 }
 
+/** An OpenCode provider entry as an ohmyswitch provider; see 「导入」 in the contract. */
+function importOpenCodeEntry(entry: unknown): HarnessImport {
+  if (!isJsonObject(entry)) return notImportable('格式不正确');
+  const name = typeof entry.name === 'string' ? entry.name : undefined;
+  const endpoint = endpointBy(packages, 'package', entry.package);
+  if (!endpoint) {
+    return notImportable(entry.package === undefined ? '没有指定 package' : `不支持 ${String(entry.package)}`, name);
+  }
+  const settings = isJsonObject(entry.settings) ? entry.settings : {};
+  const apiKey = settings.apiKey;
+  if (typeof apiKey !== 'string' || !apiKey.trim()) return notImportable('API Key 不在配置文件中', name);
+  if (apiKey.includes('{env:')) return notImportable('API Key 来自环境变量', name);
+  if (apiKey.includes('{file:')) return notImportable('API Key 来自文件', name);
+  const models = Object.entries(isJsonObject(entry.models) ? entry.models : {}).flatMap(([id, model]) => {
+    if (!isJsonObject(model)) return [];
+    const capabilities = isJsonObject(model.capabilities) ? model.capabilities : {};
+    const limit = isJsonObject(model.limit) ? model.limit : {};
+    const compatibility = isJsonObject(model.compatibility) ? model.compatibility : {};
+    return [
+      {
+        id,
+        name: model.name,
+        contextWindow: limit.context,
+        maxOutput: limit.output,
+        input: capabilities.input,
+        toolCall: capabilities.tools,
+        interleavedField: compatibility.reasoningField,
+      },
+    ];
+  });
+  // OpenCode substitutes these in the raw text, so ohmyswitch could not write the values back as they are.
+  const written = [name, settings.baseURL, ...models.flatMap((model) => [model.id, model.name])];
+  if (written.some((value) => typeof value === 'string' && substitution.test(value))) {
+    return notImportable('配置中使用了 {env:…} 或 {file:…}', name);
+  }
+  const root = importedBaseUrl(settings.baseURL, packages[endpoint].path);
+  if ('reason' in root) return notImportable(root.reason, name);
+  return {
+    importable: true,
+    ...(name ? { name } : {}),
+    baseUrl: root.baseUrl,
+    endpoint,
+    apiKey: apiKey.trim(),
+    models: importedModels(models),
+  };
+}
+
 export const openCodeAdapter: HarnessAdapter = {
   readProviders: (text) => (parseConfig(text).providers as JsonObject | undefined) ?? {},
   entry: openCodeProviderEntry,
   write: writeOpenCodeProvider,
   reorder: reorderOpenCodeProviders,
+  importEntry: importOpenCodeEntry,
   reservedKeys: pluginProviders,
   reservesCatalogProviders: true,
   // V1 `provider` entries with the same key conflict with ours; OpenCode would let the V2 entry win.

@@ -1,4 +1,5 @@
 import type { StoredProvider } from '#core/provider.ts';
+import type { HarnessImport } from './import.ts';
 
 /**
  * Reads and writes the provider entries ohmyswitch owns in one harness config file. Pure text in, text out;
@@ -17,6 +18,11 @@ export interface HarnessAdapter {
    * Returns the text unchanged when the order is already right. Files whose order means nothing leave it out.
    */
   reorder?(text: string | undefined, keys: readonly string[]): string | undefined;
+  /**
+   * The provider an entry not owned by ohmyswitch describes, so it can be imported and taken over. Only files whose
+   * entries hold everything a provider needs, the API key included, implement it.
+   */
+  importEntry?(entry: unknown): HarnessImport;
   /** Keys that must not be used, such as the harness's built-in provider ids. A harness's files share one key. */
   readonly reservedKeys: ReadonlySet<string>;
   /** Whether the harness's built-in providers come from models.dev, so every catalog provider id is reserved too. */

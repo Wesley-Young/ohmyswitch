@@ -1,5 +1,6 @@
 import {
   createProviderInput,
+  importFromHarnessesInput,
   providerIdInput,
   reorderInput,
   reviewModelsInput,
@@ -27,5 +28,9 @@ export function providerRoutes(providers: ProviderService) {
     setModels: publicProcedure.input(setModelsInput).mutation(({ input }) => providers.setModels(input)),
     reviewModels: publicProcedure.input(reviewModelsInput).mutation(({ input }) => providers.reviewModels(input)),
     syncModels: publicProcedure.input(providerIdInput).mutation(({ input }) => providers.syncModels(input.providerId)),
+    harnessImports: publicProcedure.query(() => providers.harnessImports()),
+    importFromHarnesses: publicProcedure
+      .input(importFromHarnessesInput)
+      .mutation(({ input }) => providers.importFromHarnesses(input)),
   };
 }
