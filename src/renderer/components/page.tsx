@@ -26,7 +26,13 @@ export function PageHeader({
 }) {
   return (
     <header className="border-b">
-      <div className="mx-auto flex max-w-4xl items-start justify-between gap-6 px-8 pt-8 pb-6">
+      {/* A one-line title lines up with the actions on its center; with extra lines, the actions stay at the top. */}
+      <div
+        className={cn(
+          'mx-auto flex max-w-4xl justify-between gap-6 px-8 pt-8 pb-6',
+          children ? 'items-start' : 'items-center',
+        )}
+      >
         <div className="flex min-w-0 items-center gap-3">
           {backTo && (
             <Button

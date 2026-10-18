@@ -25,7 +25,8 @@ export default function ProviderHarnessImport() {
 
   return (
     <>
-      <PageHeader title="从 Harness 导入" backTo="/providers" />
+      {/* Importing is one way of adding a provider, so going back leads to the add page. */}
+      <PageHeader title="从 Harness 导入" backTo="/providers/new" />
       <PageContent>
         {imports.isPending ? (
           <Skeleton className="h-36 w-full rounded-lg" />
@@ -137,7 +138,7 @@ function ImportForm({ imports, onStale }: { imports: Imports; onStale: () => voi
         <Button type="submit" disabled={!selected.length || importProviders.isPending}>
           {importProviders.isPending ? '正在导入…' : selected.length ? `导入 ${selected.length} 个` : '导入'}
         </Button>
-        <Button variant="outline" nativeButton={false} render={<Link to="/providers" />}>
+        <Button variant="outline" nativeButton={false} render={<Link to="/providers/new" />}>
           取消
         </Button>
       </div>
