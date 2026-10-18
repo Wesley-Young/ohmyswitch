@@ -1,0 +1,114 @@
+import { type Choice, type Scope, select } from '#cli/framework/command.ts';
+import type { Output } from '#cli/framework/output.ts';
+import { listing } from '#cli/framework/text.ts';
+import type { Endpoint } from '#core/endpoints.ts';
+import { endpoints } from '#core/endpoints.ts';
+import type { ApplicationState } from '#core/harnesses/applications.ts';
+import type { HarnessFailure, HarnessService } from '#core/harnesses/service.ts';
+import type { ProviderService } from '#core/providers/service.ts';
+
+export type ProviderSummary = ReturnType<ProviderService['list']>[number];
+export type HarnessInfo = Awaited<ReturnType<HarnessService['list']>>[number];
+
+/** A harness in results: its id for scripts and its name for people. */
+export interface HarnessRef {
+  id: string;
+  name: string;
+}
+
+/** A harness that could not be written, as results report it. */
+export interface HarnessProblem extends HarnessRef {
+  message: string;
+}
+
+/** Protocol names of the endpoints, as the GUI shows them. */
+export const endpointLabels = {
+  '/v1/chat/completions': 'OpenAI Chat Completions',
+  '/v1/responses': 'OpenAI Responses',
+  '/v1/messages': 'Anthropic Messages',
+  '/v1beta/generateContent': 'Google Generative AI',
+} satisfies Record<Endpoint, string>;
+
+/** How an application's entry looks now. */
+export const applicationStateLabels = {
+  applied: 'applied',
+  modified: 'changed outside ohmyswitch',
+  missing: 'removed outside ohmyswitch',
+  unreadable: 'config cannot be read',
+} satisfies Record<ApplicationState, string>;
+
+/** Short names accepted on the command line besides the endpoint path. */
+const endpointAliases = {
+  '/v1/chat/completions': 'chat',
+  '/v1/responses': 'responses',
+  '/v1/messages': 'messages',
+  '/v1beta/generateContent': 'gemini',
+} satisfies Record<Endpoint, string>;
+
+export const endpointChoices = (): Choice<Endpoint>[] =>
+  endpoints.map((endpoint) => ({
+    value: endpoint,
+    keys: [endpointAliases[endpoint], endpoint],
+    label: endpointLabels[endpoint],
+    hint: endpoint,
+  }));
+
+export const endpointDetails = `One of ${listing(endpoints.map((endpoint) => endpointAliases[endpoint]))}, or the endpoint path`;
+
+/** Providers in list order. `disabled` gives a reason a provider cannot be chosen for this command. */
+export async function providerChoices(
+  scope: Scope,
+  disabled?: (provider: ProviderSummary) => string | undefined,
+): Promise<Choice<ProviderSummary>[]> {
+  const ctx = await scope.services();
+  return ctx.providers.list().map((provider) => ({
+    value: provider,
+    keys: [provider.name, provider.id],
+    label: provider.name,
+    hint: endpointLabels[provider.endpoint],
+    disabled: disabled?.(provider),
+  }));
+}
+
+export const noProviders = 'There are no providers yet. Add one with "oms provider add".';
+
+/** The provider a command works on, by name or id. */
+export function providerParam(disabled?: (provider: ProviderSummary) => string | undefined) {
+  return select({
+    summary: 'Provider',
+    positional: true,
+    placeholder: 'provider',
+    details: 'Its name or id',
+    empty: noProviders,
+    choices: (scope: Scope) => providerChoices(scope, disabled),
+  });
+}
+
+/** Registered harnesses by id. */
+export async function harnessIndex(scope: Scope) {
+  const ctx = await scope.services();
+  return new Map((await ctx.harnesses.list()).map((harness) => [harness.id, harness]));
+}
+
+/** A harness by its id or name; a name with spaces also works with dashes: `opencode`, `deepseek-harness`. */
+export const harnessKeys = (harness: HarnessRef) => [
+  harness.id,
+  harness.name,
+  harness.name.toLowerCase().replaceAll(' ', '-'),
+];
+
+export function refOf(id: string, harnesses: ReadonlyMap<string, HarnessRef>): HarnessRef {
+  return { id, name: harnesses.get(id)?.name ?? id };
+}
+
+export function problemsOf(
+  failures: readonly HarnessFailure[],
+  harnesses: ReadonlyMap<string, HarnessRef>,
+): HarnessProblem[] {
+  return failures.map((failure) => ({ ...refOf(failure.harnessId, harnesses), message: failure.message }));
+}
+
+/** One warning per harness that could not be written. */
+export function warnProblems(out: Output, problems: readonly HarnessProblem[]) {
+  for (const problem of problems) out.warn(`${problem.name}: ${problem.message}`);
+}

@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/core", "src/main", "electron.vite.config.ts"]
+  "include": ["src/core", "src/main", "src/cli", "electron.vite.config.ts", "tsdown.config.ts"]
 }

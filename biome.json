@@ -85,11 +85,13 @@
                     "group": [
                       "**/main/**",
                       "#main/**",
+                      "**/cli/**",
+                      "#cli/**",
                       "**/renderer/**",
                       "react",
                       "react-dom"
                     ],
-                    "message": "core 不依赖主进程或界面。"
+                    "message": "core 不依赖主进程、CLI 或界面。"
                   },
                   {
                     "group": ["@trpc/server", "@trpc/server/*"],
@@ -118,11 +120,13 @@
                     "group": [
                       "**/main/**",
                       "#main/**",
+                      "**/cli/**",
+                      "#cli/**",
                       "**/renderer/**",
                       "react",
                       "react-dom"
                     ],
-                    "message": "core 不依赖主进程或界面。"
+                    "message": "core 不依赖主进程、CLI 或界面。"
                   },
                   {
                     "group": ["@trpc/server", "@trpc/server/*"],
@@ -145,8 +149,41 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["**/renderer/**"],
-                    "message": "主进程不依赖界面代码。"
+                    "group": ["**/renderer/**", "**/cli/**", "#cli/**"],
+                    "message": "主进程不依赖界面和 CLI 的代码。"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/cli/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "electron": "CLI 运行在 Node 上，不依赖 Electron。"
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "**/main/**",
+                      "#main/**",
+                      "**/renderer/**",
+                      "react",
+                      "react-dom"
+                    ],
+                    "message": "CLI 只依赖 core，不依赖主进程或界面。"
+                  },
+                  {
+                    "group": ["@trpc/server", "@trpc/server/*"],
+                    "message": "CLI 直接调用 core 的 service，不经过 tRPC。"
                   }
                 ]
               }

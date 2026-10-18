@@ -3,22 +3,23 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）、omp（oh-my-pi，界面上也显示 omp）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑；`index.ts` 用 `harnessPlugin(descriptor)` 导出插件，插件加载时把 `HarnessDescriptor` 注册到 `HarnessService`。Harness 插件默认启用，启用哪些由 `plugins.yml` 和 `plugins.patch.yml` 决定（契约见 `docs/plugins.md`）。只有注册了的 Harness 才列出，都能写入；Harness 之间相互独立，按名称排列。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、把插件加进 `app.ts` 中 `PluginService` 的 `builtins`，并在 `docs/plugins.md` 中列出，`HarnessService` 不用改。未注册（包括已停用）的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
+- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）、omp（oh-my-pi，界面上也显示 omp）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑；`index.ts` 用 `harnessPlugin(descriptor)` 导出插件，插件加载时把 `HarnessDescriptor` 注册到 `HarnessService`。Harness 插件默认启用，启用哪些由 `plugins.yml` 和 `plugins.patch.yml` 决定（契约见 `docs/plugins.md`）。只有注册了的 Harness 才列出，都能写入；Harness 之间相互独立，按名称排列。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、把插件加进 `core/plugins/builtins.ts`（GUI 和 CLI 共用的内置插件列表），并在 `docs/plugins.md` 中列出，`HarnessService` 不用改。未注册（包括已停用）的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
 - 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。业务逻辑组织成 cordis 插件（`cordis`、`@cordisjs/plugin-loader`、`@cordisjs/plugin-include`，都锁定精确版本），主进程用 tRPC 提供给界面；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。
 
 ## 目录与依赖方向
 
-- `src/core/`：与 Electron 无关的部分，GUI 和以后的 CLI/TUI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）、js-yaml（按 cordis Include 的方言读取插件配置）和 cordis。
+- `src/core/`：与 Electron 无关的部分，GUI 和 CLI 共用，Node 可以直接运行。只依赖 Node 内置模块、zod、jsonc-parser（编辑带注释的 JSON 配置）、yaml（编辑带注释的 YAML 配置）、js-yaml（按 cordis Include 的方言读取插件配置）和 cordis。
   - 顶层文件是共享的纯逻辑：供应商 schema、错误、路径、原子写入、文件锁等。`cordis.ts` 放 cordis 的辅助定义（如 `FiberState` 的取值）。
   - 每个子目录是一个插件模块：`store`、`http`（只定义服务）、`models-dev`、`icons`（供应商图标的查找和缓存）、`providers`、`deep-links`（`ohmyswitch://` 导入链接，契约见 `docs/deep-link.md`）、`harnesses`（注册表和写入流程）、`plugins`（`plugins.yml` 和 `plugins.patch.yml`，契约见 `docs/plugins.md`）、`harness-<id>`（每个 Harness 一个）。
   - 只有模块的 `index.ts`、`service.ts` 依赖 cordis，其余文件都是纯逻辑。core 不依赖 Electron 和 tRPC。由 Biome 检查。
 - `src/main/`：Electron 主进程，只做组装和 Electron 专用的部分。`index.ts` 只管进程级生命周期（单实例锁、启动、退出、接收 `ohmyswitch://` 链接）；`app.ts` 把 core 的插件和 `plugins/` 中的插件组装起来，是唯一的组装入口（Harness 插件作为 `PluginService` 的内置插件传入，由它加载）；`plugins/` 只放 Electron 专用插件（`http`、`protocol`、`window`）；`trpc/` 是 RPC 层，`routes/` 下每个模块一个文件，由 `router.ts` 汇总。
 - `src/renderer/`：渲染进程。`routes/` 只放页面，由 `main.tsx` 装配，页面之间不互相导入；共享界面放在 `components/`，其中 `components/ui/` 是 shadcn 生成的组件；`lib/` 只放数据和工具函数，不依赖界面。
-- 依赖只能单向：renderer →（仅类型）main → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
-- `src/core`、`src/main` 中只有同目录的文件用相对导入（`./x.ts`），离开当前目录就用 `package.json` 的 subpath imports：`#core/*`、`#main/*`、`#build/*`（窗口图标等构建资源），都写 `.ts` 后缀，不写 `../`。渲染进程用 `@/` 别名，不写后缀。
-- ohmyswitch 的文件按性质分目录，遵循各平台的约定，由 `core/paths.ts` 的 `appDirs` 决定，GUI 和以后的 CLI/TUI 共用。不在 home 下建点目录。
+- `src/cli/`：oms 命令行，见下文「CLI」。只依赖 core，与 main 互不依赖。
+- 依赖只能单向：renderer →（仅类型）main → core，cli → core。由 Biome 的 `noImportCycles` 和 `noRestrictedImports` 检查。
+- `src/core`、`src/main`、`src/cli` 中只有同目录的文件用相对导入（`./x.ts`），离开当前目录就用 `package.json` 的 subpath imports：`#core/*`、`#main/*`、`#cli/*`、`#build/*`（窗口图标等构建资源），都写 `.ts` 后缀，不写 `../`。渲染进程用 `@/` 别名，不写后缀。
+- ohmyswitch 的文件按性质分目录，遵循各平台的约定，由 `core/paths.ts` 的 `appDirs` 决定，GUI 和 CLI 共用。不在 home 下建点目录。
 
   | 目录 | 内容 | Linux | macOS | Windows |
   |---|---|---|---|---|
@@ -33,7 +34,7 @@
 ## 插件
 
 - 插件框架是 cordis。npm 包只带编译产物，行为以 cordiverse/cordis 中对应版本的源码为准：服务按名字注册在 `ctx` 上，`inject` 声明的服务都就绪后插件才加载，依赖的服务消失时插件跟着卸载；卸载时依赖方先于被依赖的服务清理。
-- 模块 `core/<name>/` 的文件分工：`service.ts` 是主 service，命名为 `XxxService`，继承 cordis 的 `Service`，它本身就是插件；`schemas.ts` 是 service 的输入校验，RPC 和以后的 CLI 共用；只有不是单个 service 的插件（如 Harness 插件）才需要 `index.ts`；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
+- 模块 `core/<name>/` 的文件分工：`service.ts` 是主 service，命名为 `XxxService`，继承 cordis 的 `Service`，它本身就是插件；`schemas.ts` 是 service 的输入校验，RPC 和 CLI 共用；只有不是单个 service 的插件（如 Harness 插件）才需要 `index.ts`；其余文件是这个模块的纯逻辑。tRPC 路由写在 `main/trpc/routes/<name>.ts`，只把校验后的输入交给 service。业务代码不依赖 tRPC，出错时抛 `core/errors.ts` 的 `AppError`。
 - service 的写法：
   - 构造函数是 `(ctx, options)`，调用 `super(ctx, '<name>')` 注册为 `ctx.<name>`，并用 `declare module 'cordis' { interface Context { <name>: XxxService } }` 声明类型。
   - 依赖写在 `static inject`，方法里通过 `this.ctx.<name>` 使用；core 的 service 依赖其他模块的服务时，按 `inject` 逐个 `import type {} from '#core/<module>/service.ts'`：界面的类型检查只沿导入链看到 core，缺了它们，推导出的返回类型会丢失。已经具名导入了 service 类型的文件（如 `main/trpc/router.ts` 和引用它的插件）不用再写。日志用构造函数里创建的 `ctx.logger('<name>')`。
@@ -42,7 +43,7 @@
 - 加载时的异步准备、对外的副作用（处理 `app://` 请求、打开窗口）和资源释放写在 `[Service.init]()` 里：返回或 yield 的函数就是清理逻辑。执行顺序由 `inject` 决定，不手动安排。
 - 注册是 effect：service 提供给其他插件的注册方法（如 `HarnessService.register`）在 `this.ctx.effect()` 中登记并返回撤销函数，登记归属调用方的插件，它卸载时自动撤销。撤销时先停止接收新的操作，再等进行中的操作完成，然后才释放它们用到的资源。
 - 配置在启动时由 `loadConfig()` 读取一次，`app.ts` 在 `ctx.plugin()` 时把每个插件需要的部分作为插件参数传入。插件不读全局配置，也不直接读 `process.env`。
-- 需要 Electron 的能力在 core 中定义服务，由 `main/plugins` 中的插件提供：网络请求注入 `ctx.http`（`core/http` 的抽象类 `HttpService`），main 的子类用会走系统代理的 `net.fetch` 实现它；以后的 CLI 换一个子类即可。
+- 需要 Electron 的能力在 core 中定义服务，由 `main/plugins` 中的插件提供：网络请求注入 `ctx.http`（`core/http` 的抽象类 `HttpService`），main 的子类用会走系统代理的 `net.fetch` 实现它，CLI 的子类用 Node 的 fetch（代理取自 `HTTP_PROXY` 等环境变量）。
 - 插件的组合方式和 DeepSeek Harness profile 的 `cordis.yml`、`cordis.patch.yml` 相同：`PluginService` 用 Include 挂载 `plugins.yml`（插件列表），把 `plugins.patch.yml`（用户和 agent 写的 patch）作为 patches 交给它，组合、写回、冲突合并都用 cordis 的原生能力，不自己实现，也不手动编辑 YAML。界面上的启用、停用通过 Loader 改 `plugins.yml`，由 Include 写回；`disabled` 被 patch 接管的插件（用 Include 的 `PatchIndex` 判断）不能在界面上切换。`plugins.patch.yml` 只读不写。上游 include 1.1.1 没有导出 `PatchIndex` 和 `entryListSchema`，用 pnpm patch（`patches/@cordisjs__plugin-include@1.1.1.patch`）补上，上游导出后删掉这个 patch。只加载内置插件，不 import 任意模块；两个文件被外部修改后立即应用；文件有误时沿用上次读取的配置。行为与 `docs/plugins.md` 保持一致。
 - ohmyswitch 自己的状态有两个归属方：供应商等业务数据在 `store.json`，只通过 `StoreService.update` 修改；插件的启用状态在 `plugins.yml`，ohmyswitch 中只通过 `PluginService` 修改；`plugins.patch.yml` 属于用户和 agent，ohmyswitch 不写。`StoreService.update` 负责校验、原子写入和串行化，逻辑在 `core/store/store.ts`。目前只在进程内串行化，多个进程同时写入前需要加跨进程锁和写前比对。`store.json` 的结构有变化时，升级 `version` 并编写迁移。
 - API Key 明文保存在 `store.json` 中，文件权限为 `0600`。不加密，也不接系统钥匙串：Key 最终会明文写进 Harness 的配置文件，而且钥匙串在 Linux 上并不可靠。API Key 不写入日志，列表等不需要展示 Key 的接口也不返回它。
@@ -95,6 +96,15 @@
 - 在最小窗口（860×560）和深色模式下不溢出、不错位；长名称、长路径会截断。
 - 把文案读一遍：能删的字删掉，同一个概念始终用同一个词。
 - 不可恢复的操作有确认，每个操作都有可见的结果。
+
+## CLI
+
+- oms 和 GUI 分开发布：CLI 用 tsdown 打包成 `out/cli/oms.mjs`（所有依赖都打进去，pnpm patch 才会生效），连同生成的 `package.json` 从 `out/cli` 发布到 npm。开发时用 `pnpm oms <args>` 直接运行源码。
+- 输出、帮助和提示都用英文，和 GUI 区分开。core 的 schema 自带中文错误信息，CLI 根据 zod issue 的 code 自己写英文描述（`framework/validate.ts`），能在 CLI 中预先检查的错误（找不到、重名、不可选）先检查掉。
+- `cli/app.ts` 是 CLI 的组装入口，组装与 GUI 相同的 core 插件，读写同一份文件。CLI 不拿单实例锁，不写日志文件，日志只在 `--verbose` 时输出到 stderr。
+- 命令只用 `framework/command.ts` 声明一次：参数的类型、取值（`parse`、`choices`）和校验同时供命令行和交互提示使用，交互模式只是参数的另一种来源。在终端中缺参数时才提示（`--json`、`--no-input`、非 TTY、CI 都不提示）；`oms` 不带命令进入菜单，按命令树展开，执行完一个命令（成功或失败）后回到进入时的那一层；Esc 返回一级（放弃当前命令时留在原来的菜单），Ctrl-C 在任何地方都直接退出。直接带命令运行时只补齐参数，执行完就退出。不写只属于交互模式或只属于命令行的功能。
+- 结果写 stdout，警告、错误和提示写 stderr；`run` 只返回结果，`--json` 原样输出它，`render` 给人看。不可恢复的操作用 `confirm` 声明，由 `--yes` 或交互确认；命令中途需要确认的事项（如接管同名条目）用 `RunScope.confirm` 对应到一个 flag。交互完成后打印等价命令。
+- 退出码是对脚本的契约（`framework/errors.ts` 的 `exitCodes`），不随意改动。
 
 ## 测试与验证
 
