@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { KeyRound, Plus } from 'lucide-react';
+import { Import, KeyRound, Plus } from 'lucide-react';
 import { Link, Navigate } from 'react-router';
 
 import { PageContent } from '@/components/page';
@@ -23,10 +23,13 @@ export default function ProvidersIndex() {
           </EmptyMedia>
           <EmptyTitle>还没有供应商</EmptyTitle>
         </EmptyHeader>
-        <EmptyContent>
+        <EmptyContent className="flex-row justify-center">
           <Button nativeButton={false} render={<Link to="/providers/new" />}>
             <Plus data-icon="inline-start" />
             添加供应商
+          </Button>
+          <Button variant="outline" nativeButton={false} render={<Link to="/providers/harness-import" />}>
+            <Import data-icon="inline-start" />从 Harness 导入
           </Button>
         </EmptyContent>
       </Empty>

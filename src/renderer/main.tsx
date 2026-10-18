@@ -12,6 +12,7 @@ import NotFound from '@/routes/not-found';
 import Plugins from '@/routes/plugins';
 import ProviderDetail from '@/routes/provider-detail';
 import ProviderEdit from '@/routes/provider-edit';
+import ProviderHarnessImport from '@/routes/provider-harness-import';
 import ProviderImport from '@/routes/provider-import';
 import ProviderNew from '@/routes/provider-new';
 import Providers from '@/routes/providers';
@@ -33,6 +34,7 @@ createRoot(root).render(
               <Route index element={<ProvidersIndex />} />
               <Route path="new" element={<ProviderNew />} />
               <Route path="import" element={<ProviderImport />} />
+              <Route path="harness-import" element={<ProviderHarnessImport />} />
               <Route path=":providerId" element={<ProviderDetail />} />
               <Route path=":providerId/edit" element={<ProviderEdit />} />
             </Route>

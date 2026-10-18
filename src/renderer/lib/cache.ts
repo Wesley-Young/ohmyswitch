@@ -42,6 +42,7 @@ export const refreshPlugins = () =>
   Promise.all([
     queryClient.invalidateQueries(trpc.plugins.pathFilter()),
     queryClient.invalidateQueries(trpc.harnesses.pathFilter()),
-    // Provider summaries list the harnesses they are applied to, which only counts enabled ones.
+    // Provider summaries list the harnesses they are applied to, which only counts enabled ones; what can be
+    // imported depends on them too.
     queryClient.invalidateQueries(savedProviderData),
   ]);
