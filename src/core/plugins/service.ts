@@ -1,3 +1,5 @@
+// include 1.1.1 does not export `PatchIndex` and `entryListSchema`; a pnpm patch adds them. Drop the patch once
+// upstream exports them.
 import { entryListSchema, Include, PatchIndex, type PatchOptions } from '@cordisjs/plugin-include';
 import type { EntryOptions } from '@cordisjs/plugin-loader';
 import { type Context, type Fiber, type Logger, type Plugin, Service } from 'cordis';
