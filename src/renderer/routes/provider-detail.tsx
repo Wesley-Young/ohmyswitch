@@ -100,7 +100,13 @@ export default function ProviderDetail() {
             </h2>
             <HarnessApplications key={data.id} providerId={data.id} endpoint={data.endpoint} />
           </section>
-          <ProviderModels key={data.id} providerId={data.id} providerName={data.name} models={data.models} />
+          <ProviderModels
+            key={data.id}
+            providerId={data.id}
+            providerName={data.name}
+            models={data.models}
+            listedModels={data.listedModels}
+          />
         </div>
       </PageContent>
       <DeleteProviderDialog

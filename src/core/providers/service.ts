@@ -1,14 +1,20 @@
 import { type Context, type Logger, Service } from 'cordis';
 
 import { AppError } from '#core/errors.ts';
-import type {} from '#core/harnesses/service.ts';
+import type { HarnessFailure } from '#core/harnesses/service.ts';
 import type {} from '#core/http/service.ts';
 import type {} from '#core/icons/service.ts';
 import type {} from '#core/models-dev/service.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { fetchModelCatalog } from './model-catalog.ts';
-import type { CreateProviderInput, ReorderInput, SetModelsInput, UpdateProviderInput } from './schemas.ts';
+import type {
+  CreateProviderInput,
+  ReorderInput,
+  ReviewModelsInput,
+  SetModelsInput,
+  UpdateProviderInput,
+} from './schemas.ts';
 
 import { randomUUID } from 'node:crypto';
 
@@ -34,7 +40,7 @@ export class ProviderService extends Service {
   /** The detail view of a provider, with its models. */
   get(providerId: string) {
     const provider = this.find(this.ctx.store.data.providers, providerId);
-    return { ...this.summary(provider), models: provider.models };
+    return { ...this.summary(provider), models: provider.models, listedModels: provider.listedModels };
   }
 
   /** The connection fields for the editor, the only place the API key is returned. */
@@ -45,25 +51,53 @@ export class ProviderService extends Service {
 
   /**
    * Ask the provider which models it serves, using its saved connection, then fill missing metadata from
-   * models.dev. Nothing is stored: the user picks which models to keep. models.dev failing does not fail the
-   * request; it is reported alongside.
+   * models.dev. The user picks which models to keep, so only the list itself is recorded as reviewed. models.dev
+   * failing does not fail the request; it is reported alongside.
    */
   async fetchModels(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
-    const provider = this.find(this.ctx.store.data.providers, providerId);
-    const { models } = await fetchModelCatalog(provider, this.ctx.http.fetch, AbortSignal.timeout(20_000));
-    try {
-      const index = await this.ctx.modelsDev.index();
-      return { models: models.map((model) => index.enrich(model)) };
-    } catch (error) {
-      this.logger.warn('Failed to load models.dev', error);
-      return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
-    }
+    const result = await this.remote(providerId);
+    await this.recordListed(providerId, result.models);
+    return result;
+  }
+
+  /**
+   * The provider's model list, for comparing with the saved models in the background. The first time, it is only
+   * recorded, so models that were already there are not offered as new. A failure of models.dev is not reported.
+   */
+  async remoteModels(providerId: string): Promise<{ models: ModelInfo[] }> {
+    const { models } = await this.remote(providerId);
+    if (!this.find(this.ctx.store.data.providers, providerId).listedModels) await this.recordListed(providerId, models);
+    return { models };
   }
 
   /** Replace the provider's model list and rewrite it in the harnesses it is applied to. */
   setModels(input: SetModelsInput) {
     return this.save(input.providerId, (provider) => {
       provider.models = input.models;
+    });
+  }
+
+  /**
+   * Apply the review of how the provider's model list changed, and remember the list as reviewed. The harnesses
+   * are rewritten only when models were added or removed.
+   */
+  async reviewModels(input: ReviewModelsInput) {
+    if (!input.add.length && !input.remove.length) {
+      const saved = await this.ctx.store.update((draft) => {
+        const provider = this.find(draft.providers, input.providerId);
+        provider.listedModels = input.listed;
+        return provider;
+      });
+      return { ...this.summary(saved), harnessFailures: [] as HarnessFailure[] };
+    }
+    return this.save(input.providerId, (provider) => {
+      const removed = new Set(input.remove);
+      const kept = provider.models.filter((model) => !removed.has(model.id));
+      const known = new Set(kept.map((model) => model.id));
+      provider.models = [...kept, ...input.add.filter((model) => !known.has(model.id))].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      );
+      provider.listedModels = input.listed;
     });
   }
 
@@ -88,6 +122,8 @@ export class ProviderService extends Service {
       if (providers.some((item) => item.id !== provider.id && item.name === input.name)) {
         throw new AppError('conflict', `已有名为「${input.name}」的供应商`);
       }
+      // Another address or protocol lists other models; the next read of the list starts over from it.
+      if (provider.baseUrl !== input.baseUrl || provider.endpoint !== input.endpoint) delete provider.listedModels;
       provider.name = input.name;
       provider.baseUrl = input.baseUrl;
       provider.apiKey = input.apiKey;
@@ -148,14 +184,39 @@ export class ProviderService extends Service {
 
   /** Models from their ids, with metadata from models.dev where it is available; without it, ids alone. */
   private async initialModels(ids: string[]): Promise<ModelInfo[]> {
-    const models = ids.map((id) => ({ id }));
+    return ids.map((id) => ({ id })).map(await this.enricher());
+  }
+
+  /** Fills a model's missing metadata from models.dev; without models.dev, models are left as they are. */
+  private async enricher(): Promise<(model: ModelInfo) => ModelInfo> {
     try {
       const index = await this.ctx.modelsDev.index();
-      return models.map((model) => index.enrich(model));
+      return (model) => index.enrich(model);
     } catch (error) {
       this.logger.warn('Failed to load models.dev', error);
-      return models;
+      return (model) => model;
     }
+  }
+
+  /** The models the provider lists now, with metadata from models.dev where it is available. */
+  private async remote(providerId: string): Promise<{ models: ModelInfo[]; metadataError?: string }> {
+    const provider = this.find(this.ctx.store.data.providers, providerId);
+    const { models } = await fetchModelCatalog(provider, this.ctx.http.fetch, AbortSignal.timeout(20_000));
+    try {
+      const index = await this.ctx.modelsDev.index();
+      return { models: models.map((model) => index.enrich(model)) };
+    } catch (error) {
+      this.logger.warn('Failed to load models.dev', error);
+      return { models, metadataError: error instanceof AppError ? error.message : '无法读取 models.dev' };
+    }
+  }
+
+  /** Remember the provider's model list as reviewed. A provider deleted meanwhile is skipped. */
+  private recordListed(providerId: string, models: readonly ModelInfo[]) {
+    return this.ctx.store.update((draft) => {
+      const provider = draft.providers.find((item) => item.id === providerId);
+      if (provider) provider.listedModels = models.map((model) => model.id);
+    });
   }
 
   /**

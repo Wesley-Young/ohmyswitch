@@ -7,13 +7,13 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const storeFile = z.object({
-  version: z.literal(2),
+  version: z.literal(3),
   providers: z.array(storedProvider),
 });
 
 export type StoreData = z.infer<typeof storeFile>;
 
-const emptyStore = (): StoreData => ({ version: 2, providers: [] });
+const emptyStore = (): StoreData => ({ version: 3, providers: [] });
 
 /**
  * Upgrade an older store file in place, one version at a time. A version newer than this build is left alone,
@@ -24,6 +24,8 @@ function migrate(raw: unknown): unknown {
   const data = raw as { version?: unknown };
   // 1 → 2: providers gained the optional `iconUrl`; existing data is unchanged.
   if (data.version === 1) data.version = 2;
+  // 2 → 3: providers gained the optional `listedModels`; existing data is unchanged.
+  if (data.version === 2) data.version = 3;
   return data;
 }
 

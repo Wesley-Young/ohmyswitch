@@ -4,6 +4,21 @@ export type Model = RouterOutputs['providers']['get']['models'][number];
 export type ModelInput = NonNullable<Model['input']>[number];
 export type ReasoningOption = NonNullable<Model['reasoningOptions']>[number];
 
+/**
+ * How the provider's model list changed since it was last reviewed: models listed since then that are not saved,
+ * and saved models that were listed then but no longer are. Nothing until the list has been recorded once.
+ */
+export function modelChanges(saved: readonly Model[], listed: readonly string[] | undefined, remote: readonly Model[]) {
+  if (!listed) return { added: [], removed: [] };
+  const listedIds = new Set(listed);
+  const savedIds = new Set(saved.map((model) => model.id));
+  const remoteIds = new Set(remote.map((model) => model.id));
+  return {
+    added: remote.filter((model) => !listedIds.has(model.id) && !savedIds.has(model.id)),
+    removed: saved.filter((model) => listedIds.has(model.id) && !remoteIds.has(model.id)),
+  };
+}
+
 export const effortValues = (options: readonly ReasoningOption[] | undefined) =>
   options?.find((option) => option.type === 'effort')?.values ?? [];
 

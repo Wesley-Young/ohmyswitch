@@ -42,7 +42,23 @@ export const setModelsInput = providerIdInput.extend({
     .transform((models) => [...new Map(models.map((model) => [model.id, model])).values()]),
 });
 
+const modelId = z.string().min(1).max(256);
+
+/**
+ * The outcome of reviewing how the provider's model list changed: models to add and remove, and the list as it
+ * was reviewed, which later changes are measured against.
+ */
+export const reviewModelsInput = providerIdInput.extend({
+  add: z.array(modelInfo).max(2000),
+  remove: z.array(modelId).max(2000),
+  listed: z
+    .array(modelId)
+    .max(2000)
+    .transform((ids) => [...new Set(ids)]),
+});
+
 export type CreateProviderInput = z.infer<typeof createProviderInput>;
+export type ReviewModelsInput = z.infer<typeof reviewModelsInput>;
 export type UpdateProviderInput = z.infer<typeof updateProviderInput>;
 export type SetModelsInput = z.infer<typeof setModelsInput>;
 export type ReorderInput = z.infer<typeof reorderInput>;

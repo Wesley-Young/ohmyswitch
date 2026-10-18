@@ -90,6 +90,12 @@ export const storedProvider = z.object({
   iconUrl: z.url({ protocol: /^https?$/ }).optional(),
   models: z.array(modelInfo),
   /**
+   * The model ids the provider's model list held when the user last reviewed it. Models listed since are offered
+   * as new, and saved models that were listed but no longer are offered for removal. Unset until the list is first
+   * read; that first read only records it.
+   */
+  listedModels: z.array(z.string().min(1).max(256)).max(2000).optional(),
+  /**
    * Harnesses this provider is applied to, with the key ohmyswitch owns in each harness config. Entries of
    * harnesses that are not registered are kept, so the application survives until the harness is back.
    */

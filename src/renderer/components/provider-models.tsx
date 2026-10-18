@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { MoreHorizontal, Pencil, RefreshCw, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
-import { refreshProviders } from '@/lib/cache';
-import { formatTokens, inputLabels, type Model, optionalInputs, reasoningLabel } from '@/lib/models';
+import { refreshFetchedModels, refreshProviders } from '@/lib/cache';
+import { formatTokens, inputLabels, type Model, modelChanges, optionalInputs, reasoningLabel } from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
 
 const byId = (a: Model, b: Model) => a.id.localeCompare(b.id);
@@ -31,22 +31,51 @@ export function ProviderModels({
   providerId,
   providerName,
   models,
+  listedModels,
 }: {
   providerId: string;
   providerName: string;
   models: Model[];
+  /** The provider's model list as last reviewed, which changes are measured against. */
+  listedModels: string[] | undefined;
 }) {
   const report = useHarnessFeedback();
   const [editing, setEditing] = useState<Model>();
   const [editOpen, setEditOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+
+  // Checked in the background to offer what changed; failures are not shown, since nothing was asked for.
+  const remote = useQuery(
+    trpc.providers.remoteModels.queryOptions(
+      { providerId },
+      { enabled: models.length > 0, staleTime: 10 * 60_000, retry: false },
+    ),
+  );
+  const changes = useMemo(
+    () => modelChanges(models, listedModels, remote.data?.models ?? []),
+    [models, listedModels, remote.data],
+  );
+  const changeCount = changes.added.length + changes.removed.length;
 
   const fetchModels = useMutation(
     trpc.providers.fetchModels.mutationOptions({
-      onSuccess: ({ metadataError }) => {
+      onSuccess: ({ models: fetched, metadataError }) => {
         if (metadataError) toast.warning(`未能补全模型信息：${metadataError}`);
+        void refreshFetchedModels(providerId, fetched);
         setPicking(true);
       },
+    }),
+  );
+  const reviewModels = useMutation(
+    trpc.providers.reviewModels.mutationOptions({
+      onSuccess: async (saved, { add, remove }) => {
+        await refreshProviders();
+        setReviewing(false);
+        if (!add.length && !remove.length) toast.success('已忽略模型变化');
+        else report(reviewMessage(add.length, remove.length), saved);
+      },
+      onError: (error) => toast.error(formError(error)?.message),
     }),
   );
   const setModels = useMutation(
@@ -72,7 +101,7 @@ export function ProviderModels({
       onError: (error) => toast.error(formError(error)?.message),
     }),
   );
-  const pending = fetchModels.isPending || setModels.isPending || syncModels.isPending;
+  const pending = fetchModels.isPending || setModels.isPending || syncModels.isPending || reviewModels.isPending;
 
   const save = (next: Model[], message: string, undo?: Model[]) =>
     setModels.mutate(
@@ -110,6 +139,11 @@ export function ProviderModels({
         </h2>
         {models.length > 0 && (
           <div className="flex shrink-0 items-center gap-1">
+            {changeCount > 0 && (
+              <Button variant="secondary" size="sm" disabled={pending} onClick={() => setReviewing(true)}>
+                {changesLabel(changes.added.length, changes.removed.length)}
+              </Button>
+            )}
             {pickButton}
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -185,6 +219,21 @@ export function ProviderModels({
             models.map((item) => (item.id === saved.id ? saved : item)),
             `已保存 ${saved.id}`,
           )
+        }
+      />
+      <ModelChangesDialog
+        open={reviewing}
+        onOpenChange={setReviewing}
+        added={changes.added}
+        removed={changes.removed}
+        pending={reviewModels.isPending}
+        onConfirm={(add, remove) =>
+          reviewModels.mutate({
+            providerId,
+            add,
+            remove,
+            listed: (remote.data?.models ?? []).map((model) => model.id),
+          })
         }
       />
       <ModelPickerDialog
@@ -382,5 +431,172 @@ function ModelPicker({
         <Button type="submit">确定</Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/** The button that opens the review: what changed, in a few words. */
+function changesLabel(added: number, removed: number) {
+  if (added && removed) return `${added} 个新模型，${removed} 个已下架`;
+  return added ? `${added} 个新模型` : `${removed} 个模型已下架`;
+}
+
+function reviewMessage(added: number, removed: number) {
+  if (added && removed) return `已加入 ${added} 个模型，移除 ${removed} 个`;
+  return added ? `已加入 ${added} 个模型` : `已移除 ${removed} 个模型`;
+}
+
+/**
+ * Review how the provider's model list changed: pick new models to add and models no longer listed to remove.
+ * Either way, the changes shown are not offered again.
+ */
+function ModelChangesDialog({
+  open,
+  onOpenChange,
+  added,
+  removed,
+  pending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  added: Model[];
+  removed: Model[];
+  pending: boolean;
+  onConfirm: (add: Model[], remove: string[]) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <ModelChanges added={added} removed={removed} pending={pending} onConfirm={onConfirm} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Mounted only while the dialog is open: new models start unchecked, models no longer listed start checked. */
+function ModelChanges({
+  added,
+  removed,
+  pending,
+  onConfirm,
+}: {
+  added: Model[];
+  removed: Model[];
+  pending: boolean;
+  onConfirm: (add: Model[], remove: string[]) => void;
+}) {
+  const [adding, setAdding] = useState(() => new Set<string>());
+  const [removing, setRemoving] = useState(() => new Set(removed.map((model) => model.id)));
+
+  return (
+    <form
+      noValidate
+      className="grid min-w-0 gap-4"
+      onSubmit={(event) => {
+        // The dialog is portaled, but React still bubbles submit through the component tree; keep it here.
+        event.preventDefault();
+        event.stopPropagation();
+        onConfirm(
+          added.filter((model) => adding.has(model.id)),
+          removed.filter((model) => removing.has(model.id)).map((model) => model.id),
+        );
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>模型变化</DialogTitle>
+      </DialogHeader>
+      {added.length > 0 && (
+        <ChangeList
+          id="model-changes-added"
+          label="加入新增的模型"
+          models={added}
+          selected={adding}
+          onChange={setAdding}
+        />
+      )}
+      {removed.length > 0 && (
+        <ChangeList
+          id="model-changes-removed"
+          label="移除已下架的模型"
+          models={removed}
+          selected={removing}
+          onChange={setRemoving}
+        />
+      )}
+      <DialogFooter>
+        <Button type="button" variant="outline" disabled={pending} onClick={() => onConfirm([], [])}>
+          忽略
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? '正在保存…' : '确定'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function ChangeList({
+  id,
+  label,
+  models,
+  selected,
+  onChange,
+}: {
+  id: string;
+  /** What checking a model does, such as 「加入新增的模型」. */
+  label: string;
+  models: Model[];
+  selected: ReadonlySet<string>;
+  onChange: (selected: Set<string>) => void;
+}) {
+  const count = models.filter((model) => selected.has(model.id)).length;
+  const toggle = (ids: string[], checked: boolean) => {
+    const next = new Set(selected);
+    for (const modelId of ids) {
+      if (checked) next.add(modelId);
+      else next.delete(modelId);
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-2 px-3 text-sm">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            id={`${id}-all`}
+            checked={count === models.length}
+            indeterminate={count > 0 && count < models.length}
+            onCheckedChange={(checked) =>
+              toggle(
+                models.map((model) => model.id),
+                checked,
+              )
+            }
+          />
+          <label htmlFor={`${id}-all`}>{label}</label>
+        </div>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          已选 {count} / {models.length}
+        </span>
+      </div>
+      <ul className="max-h-56 divide-y overflow-y-auto rounded-lg border">
+        {models.map((model, index) => (
+          <li key={model.id} className="flex items-center gap-3 pl-3 hover:bg-muted/50">
+            <Checkbox
+              id={`${id}-${index}`}
+              checked={selected.has(model.id)}
+              onCheckedChange={(checked) => toggle([model.id], checked)}
+            />
+            <label
+              htmlFor={`${id}-${index}`}
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2 pr-3"
+            >
+              <ModelSummary model={model} />
+            </label>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

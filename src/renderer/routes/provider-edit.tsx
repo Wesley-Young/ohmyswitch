@@ -8,7 +8,7 @@ import { useHarnessFeedback } from '@/components/harness-feedback';
 import { PageContent, PageHeader } from '@/components/page';
 import { ProviderForm, toPayload } from '@/components/provider-form';
 import { Button } from '@/components/ui/button';
-import { refreshProviders } from '@/lib/cache';
+import { refreshConnection } from '@/lib/cache';
 import { formError, type RouterOutputs, trpc } from '@/lib/trpc';
 
 type Connection = RouterOutputs['providers']['connection'];
@@ -52,7 +52,7 @@ function EditProviderForm({ providerId, connection }: { providerId: string; conn
   const update = useMutation(
     trpc.providers.update.mutationOptions({
       onSuccess: async (saved) => {
-        await refreshProviders();
+        await refreshConnection(saved.id);
         report(`已保存「${saved.name}」`, saved);
         // Models fetched for the old protocol may not be served on the new one.
         if (saved.endpoint !== connection.endpoint && saved.modelCount > 0) {
