@@ -19,6 +19,8 @@ ohmyswitch 的 Harness 都是内置插件，默认全部启用。启用哪些由
   disabled: true
 - id: dsh
   name: cordis:harness-dsh
+- id: omp
+  name: cordis:harness-omp
 ```
 
 文件的顶层是一个列表，每一项对应一个插件：
@@ -34,6 +36,7 @@ ohmyswitch 的 Harness 都是内置插件，默认全部启用。启用哪些由
 | `cordis:harness-opencode` | OpenCode |
 | `cordis:harness-pi` | Pi |
 | `cordis:harness-dsh` | DeepSeek Harness |
+| `cordis:harness-omp` | omp |
 
 - 文件不存在时，ohmyswitch 按上表创建。文件中缺少的内置插件会在启动时补到末尾（新版本附带的插件也是这样出现的），所以停用插件请写 `disabled: true`，删掉的项下次启动会回来。
 - ohmyswitch 写回这个文件时会重新生成整个文件，注释不会保留。需要注释时请写在 `plugins.patch.yml` 中。

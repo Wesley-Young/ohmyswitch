@@ -3,7 +3,7 @@
 ## 项目
 
 - ohmyswitch 采用「供应商优先」的设计：先导入供应商（Base URL、API Key、端点、模型），再按需应用到各个 Harness 的配置文件。不做官方账号登录、请求代理和用量统计。
-- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑；`index.ts` 用 `harnessPlugin(descriptor)` 导出插件，插件加载时把 `HarnessDescriptor` 注册到 `HarnessService`。Harness 插件默认启用，启用哪些由 `plugins.yml` 和 `plugins.patch.yml` 决定（契约见 `docs/plugins.md`）。只有注册了的 Harness 才列出，都能写入；Harness 之间相互独立，按名称排列。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、把插件加进 `app.ts` 中 `PluginService` 的 `builtins`，并在 `docs/plugins.md` 中列出，`HarnessService` 不用改。未注册（包括已停用）的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
+- 支持的 Harness：OpenCode、Pi、DeepSeek Harness（文档和代码中简称 DSH，界面上显示全称 DeepSeek Harness）、omp（oh-my-pi，界面上也显示 omp）。每个 Harness 是 `src/core/harness-<id>/` 中的一个插件，包含它的位置、路径规则和读写逻辑；`index.ts` 用 `harnessPlugin(descriptor)` 导出插件，插件加载时把 `HarnessDescriptor` 注册到 `HarnessService`。Harness 插件默认启用，启用哪些由 `plugins.yml` 和 `plugins.patch.yml` 决定（契约见 `docs/plugins.md`）。只有注册了的 Harness 才列出，都能写入；Harness 之间相互独立，按名称排列。新增 Harness 就是写契约文档、新建一个 `harness-<id>` 目录、把插件加进 `app.ts` 中 `PluginService` 的 `builtins`，并在 `docs/plugins.md` 中列出，`HarnessService` 不用改。未注册（包括已停用）的 Harness 在 `store.json` 中的应用记录原样保留，但不显示、不同步，也不阻止删除供应商。
 - 技术栈：Electron + electron-vite、pnpm v12、TypeScript 7（只做类型检查，不负责编译）、Biome。业务逻辑组织成 cordis 插件（`cordis`、`@cordisjs/plugin-loader`、`@cordisjs/plugin-include`，都锁定精确版本），主进程用 tRPC 提供给界面；界面使用 React、React Router、TanStack Query 和 shadcn/ui（Base UI + Tailwind v4）。不引入其他 UI 框架。
 - 代码注释和标识符用英文，界面文案用中文。
 - 只在开发者要求时修改 `README.md`。

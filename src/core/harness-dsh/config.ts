@@ -16,6 +16,7 @@ import { AppError } from '#core/errors.ts';
 import type { HarnessAdapter } from '#core/harnesses/adapter.ts';
 import { isJsonObject, type JsonObject, withOwnedFields } from '#core/jsonc.ts';
 import type { ModelInfo, StoredProvider } from '#core/provider.ts';
+import { reorderYamlMap } from '#core/yaml.ts';
 
 /**
  * DeepSeek Harness: providers in the `llm-pi-ai` entry of each profile's `cordis.patch.yml`, API keys in
@@ -303,29 +304,7 @@ function reorderPatchProviders(text: string | undefined, keys: readonly string[]
   const label = 'DeepSeek Harness 的 profile patch';
   const document = parsePatch(text, label);
   const providers = providersMap(entryRow(document), label);
-  if (!providers) return text;
-  const { items } = providers;
-  const keyOf = (index: number) => {
-    const key = items[index]?.key;
-    return isScalar(key) ? String(key.value) : undefined;
-  };
-  const wanted = new Set(keys);
-  const slots = items.flatMap((_, index) => (wanted.has(keyOf(index) ?? '') ? [index] : []));
-  const pairs = new Map(slots.map((index) => [keyOf(index), items[index]]));
-  const order = keys.filter((key) => pairs.has(key));
-  if (slots.every((index, position) => keyOf(index) === order[position])) return text;
-  // A comment above the map's first entry belongs to that entry, but the parser attaches it to the map.
-  const first = items[0]?.key;
-  if (slots[0] === 0 && providers.commentBefore && isScalar(first)) {
-    first.commentBefore = [providers.commentBefore, first.commentBefore].filter(Boolean).join('\n');
-    providers.commentBefore = null;
-  }
-  const spacing = slots.map((index) => (isScalar(items[index].key) ? items[index].key.spaceBefore : undefined));
-  slots.forEach((index, position) => {
-    const pair = pairs.get(order[position]) as (typeof items)[number];
-    if (isScalar(pair.key)) pair.key.spaceBefore = spacing[position];
-    items[index] = pair;
-  });
+  if (!providers || !reorderYamlMap(providers, keys)) return text;
   return document.toString(stringifyOptions);
 }
 
