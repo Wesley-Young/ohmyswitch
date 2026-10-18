@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { TRPCClientError } from '@trpc/client';
 import { ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
 import { HarnessIcon, type HarnessId } from '@/components/harness-icon';
@@ -76,11 +76,60 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
       onError: (error) => toast.error(formError(error)?.message),
     }),
   );
-  const pending = apply.isPending || unapply.isPending;
+  const unapplyMany = useMutation(
+    trpc.harnesses.unapplyMany.mutationOptions({
+      onSuccess: async ({ failures }, { harnessIds }) => {
+        await refreshProviders();
+        const failed = new Set(failures.map((failure) => failure.harnessId));
+        const removed = harnessIds.filter((harnessId) => !failed.has(harnessId));
+        if (removed.length) toast.success(`已从 ${removed.map(nameOf).join('、')} 移除`);
+        for (const failure of failures) toast.error(`未能从 ${nameOf(failure.harnessId)} 移除：${failure.message}`);
+      },
+      onError: (error) => toast.error(formError(error)?.message),
+    }),
+  );
+  const applyAll = useMutation(
+    trpc.harnesses.applyAll.mutationOptions({
+      onSuccess: async ({ applied: done, failures }) => {
+        await refreshProviders();
+        if (done.length) {
+          toast.success(`已应用到 ${done.map(nameOf).join('、')}`, {
+            action: { label: '撤销', onClick: () => unapplyMany.mutate({ providerId, harnessIds: done }) },
+          });
+        }
+        for (const failure of failures) toast.error(`未能应用到 ${nameOf(failure.harnessId)}：${failure.message}`);
+      },
+      onError: (error) => toast.error(formError(error)?.message),
+    }),
+  );
+  const pending = apply.isPending || unapply.isPending || applyAll.isPending || unapplyMany.isPending;
 
-  if (harnesses.isPending || applications.isPending) return <Skeleton className="h-28 w-full rounded-lg" />;
+  // Harnesses 应用所有 would write to: installed, able to serve the endpoint, and without this provider yet.
+  const pendingHarnesses = (harnesses.data ?? []).filter(
+    (harness) =>
+      harness.detected &&
+      !harness.unsupportedEndpoints.includes(endpoint) &&
+      !applied.some((item) => item.harnessId === harness.id),
+  );
+  const section = (body: ReactNode) => (
+    <section className="grid gap-3" aria-labelledby="applications-title">
+      <div className="flex h-7 items-center justify-between gap-2">
+        <h2 id="applications-title" className="text-sm font-medium">
+          应用到 Harness
+        </h2>
+        {pendingHarnesses.length > 0 && (
+          <Button variant="outline" size="sm" disabled={pending} onClick={() => applyAll.mutate({ providerId })}>
+            {applyAll.isPending ? '正在应用…' : '应用所有'}
+          </Button>
+        )}
+      </div>
+      {body}
+    </section>
+  );
+
+  if (harnesses.isPending || applications.isPending) return section(<Skeleton className="h-28 w-full rounded-lg" />);
   if (harnesses.isError || applications.isError) {
-    return (
+    return section(
       <div className="flex items-center justify-between rounded-lg border px-4 py-3 text-sm">
         <span className="text-destructive">{formError(harnesses.error ?? applications.error)?.message}</span>
         <Button
@@ -93,7 +142,7 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
         >
           重试
         </Button>
-      </div>
+      </div>,
     );
   }
 
@@ -161,7 +210,7 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
   );
   const missing = harnesses.data.filter((harness) => !visible.includes(harness));
 
-  return (
+  return section(
     <>
       <div className="grid gap-2">
         {visible.length > 0 && <ul className="divide-y rounded-lg border bg-card">{visible.map(row)}</ul>}
@@ -201,6 +250,6 @@ export function HarnessApplications({ providerId, endpoint }: { providerId: stri
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </>,
   );
 }

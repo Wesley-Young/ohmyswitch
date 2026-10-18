@@ -94,12 +94,7 @@ export default function ProviderDetail() {
       </PageHeader>
       <PageContent>
         <div className="grid gap-8">
-          <section className="grid gap-3" aria-labelledby="applications-title">
-            <h2 id="applications-title" className="text-sm font-medium">
-              应用到
-            </h2>
-            <HarnessApplications key={data.id} providerId={data.id} endpoint={data.endpoint} />
-          </section>
+          <HarnessApplications key={data.id} providerId={data.id} endpoint={data.endpoint} />
           <ProviderModels
             key={data.id}
             providerId={data.id}

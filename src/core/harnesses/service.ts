@@ -176,6 +176,45 @@ export class HarnessService extends Service {
     return { key };
   }
 
+  /**
+   * Apply a provider to every registered harness found on this machine that can serve its endpoint and does not
+   * have it yet. An entry with the same key that ohmyswitch does not own is never taken over here: like any other
+   * failure it is reported, for the user to settle on that harness alone.
+   */
+  async applyAll(providerId: string) {
+    const provider = this.provider(providerId);
+    const applied: HarnessId[] = [];
+    const failures: HarnessFailure[] = [];
+    for (const harness of this.harnesses()) {
+      if (provider.harnesses[harness.id] || harness.unsupportedEndpoints?.includes(provider.endpoint)) continue;
+      if (!(await isDirectory(harness.homeDir(this.environment)))) continue;
+      try {
+        await this.apply(providerId, harness.id, false);
+        applied.push(harness.id);
+      } catch (error) {
+        const conflict = error instanceof AppError && error.kind === 'conflict';
+        failures.push({
+          harnessId: harness.id,
+          message: conflict ? `${error.message}，请单独应用并确认是否替换` : failureMessage(error),
+        });
+      }
+    }
+    return { applied, failures };
+  }
+
+  /** Remove a provider from several harnesses, such as to undo 应用所有. Every one is tried; failures are reported. */
+  async unapplyMany(providerId: string, harnessIds: readonly HarnessId[]) {
+    const failures: HarnessFailure[] = [];
+    for (const harnessId of new Set(harnessIds)) {
+      try {
+        await this.unapply(providerId, harnessId);
+      } catch (error) {
+        failures.push({ harnessId, message: failureMessage(error) });
+      }
+    }
+    return { failures };
+  }
+
   /** Remove a provider from a harness's config files and forget the application. */
   async unapply(providerId: string, harnessId: HarnessId) {
     const provider = this.provider(providerId);
