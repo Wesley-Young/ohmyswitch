@@ -6,6 +6,7 @@ import { cn } from 'cn';
 import { SquareTerminal } from 'lucide-react';
 import type { ComponentType } from 'react';
 
+import { OmpLogo } from '@/components/omp-logo';
 import type { RouterOutputs } from '@/lib/trpc';
 
 export type HarnessId = RouterOutputs['harnesses']['list'][number]['id'];
@@ -16,7 +17,7 @@ type Icon = ComponentType<{ size?: number; className?: string; 'aria-hidden'?: b
  * Monochrome logos drawn with currentColor, so they follow the theme. Harnesses are registered by plugins, so the
  * set is open: one without a logo here gets a generic icon.
  */
-const icons: Partial<Record<HarnessId, Icon>> = { opencode: OpenCode, pi: Pi, dsh: DeepSeek };
+const icons: Partial<Record<HarnessId, Icon>> = { opencode: OpenCode, pi: Pi, dsh: DeepSeek, omp: OmpLogo };
 
 const iconOf = (id: HarnessId) => icons[id] ?? SquareTerminal;
 
