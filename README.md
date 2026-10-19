@@ -2,12 +2,23 @@
 
 Provider-first config manager for AI coding harnesses.
 
-## 环境要求
+## 安装
 
-- Node.js 24.13+
-- pnpm v12
+### CLI
+
+```sh
+npm i -g ohmyswitch
+```
+
+需要 Node.js 24.14+ 和 npm，支持 Windows、macOS、Linux。安装后使用 `ohmyswitch` 或 `oms` 命令启动。
+
+### App
+
+暂无稳定版本，目前请前往 [Actions](https://github.com/Wesley-Young/ohmyswitch/actions/workflows/build-app.yml) 下载最新的构建产物。仅支持 Windows (x64) 和 macOS (arm64)。
 
 ## 开发
+
+需要 Node.js 24.14+ 和 pnpm v12。
 
 ```sh
 pnpm install
