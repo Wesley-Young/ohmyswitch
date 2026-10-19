@@ -137,6 +137,11 @@
   -webkit-app-region: no-drag;
 }
 
+/* Leaves room for the window controls the system draws over the top-right corner (Windows and Linux). */
+@utility app-controls-inset {
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.75rem);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
