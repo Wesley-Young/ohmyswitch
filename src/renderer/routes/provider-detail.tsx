@@ -96,7 +96,12 @@ export default function ProviderDetail() {
         {/* Keyed on the provider so switching providers remounts both sections with fresh local state. */}
         <div key={data.id} className="grid gap-8">
           <HarnessApplications providerId={data.id} endpoint={data.endpoint} />
-          <ProviderModels providerId={data.id} providerName={data.name} models={data.models} />
+          <ProviderModels
+            providerId={data.id}
+            providerName={data.name}
+            models={data.models}
+            effectiveModels={data.effectiveModels}
+          />
         </div>
       </PageContent>
       <DeleteProviderDialog

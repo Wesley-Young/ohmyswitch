@@ -29,16 +29,19 @@ export function ProviderModels({
   providerId,
   providerName,
   models,
+  effectiveModels,
 }: {
   providerId: string;
   providerName: string;
   models: Model[];
+  effectiveModels: Model[];
 }) {
   const report = useHarnessFeedback();
   const [editing, setEditing] = useState<Model>();
   const [editOpen, setEditOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const overrides = useQuery(trpc.providers.modelOverrides.queryOptions());
 
   // Checked in the background to offer what changed; failures are not shown, since nothing was asked for.
   const remote = useQuery(
@@ -174,7 +177,18 @@ export function ProviderModels({
         <ul className="divide-y rounded-lg border bg-card">
           {models.map((model) => (
             <li key={model.id} className="flex items-center gap-1 py-2.5 pr-2 pl-4">
-              <ModelSummary model={model} />
+              <ModelSummary model={effectiveModels.find((item) => item.id === model.id) ?? model} />
+              {Object.hasOwn(overrides.data ?? {}, model.id) && (
+                <Badge
+                  variant="outline"
+                  title={(['name', 'contextWindow', 'maxOutput'] as const)
+                    .filter((key) => Object.hasOwn(overrides.data?.[model.id] ?? {}, key))
+                    .map((key) => ({ name: '名称', contextWindow: '上下文', maxOutput: '最大输出' })[key])
+                    .join('、')}
+                >
+                  全局覆盖
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="icon-xs"
@@ -215,6 +229,13 @@ export function ProviderModels({
       )}
       <ModelEditDialog
         model={editing}
+        overriddenFields={
+          editing
+            ? (['name', 'contextWindow', 'maxOutput'] as const)
+                .filter((key) => Object.hasOwn(overrides.data?.[editing.id] ?? {}, key))
+                .map((key) => ({ name: '名称', contextWindow: '上下文', maxOutput: '最大输出' })[key])
+            : []
+        }
         open={editOpen}
         onOpenChange={setEditOpen}
         onSave={(saved) =>

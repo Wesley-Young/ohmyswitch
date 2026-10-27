@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { endpoints } from '#core/endpoints.ts';
 import { harnessId } from '#core/harnesses/types.ts';
-import { baseUrl, iconUrl, modelInfo, providerName } from '#core/provider.ts';
+import { baseUrl, iconUrl, modelInfo, modelOverride, providerName } from '#core/provider.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
 
@@ -58,6 +58,15 @@ export const setModelsInput = providerIdInput.extend({
 });
 
 const modelId = z.string().min(1).max(256);
+
+export const modelOverrideInput = z.object({
+  modelId,
+  override: modelOverride.refine((value) => Object.values(value).some((field) => field !== undefined), {
+    error: '请至少填写一项覆盖信息',
+  }),
+});
+export const removeModelOverrideInput = z.object({ modelId });
+export type ModelOverrideInput = z.infer<typeof modelOverrideInput>;
 
 /**
  * The outcome of choosing which of the provider's listed models to keep: the list as it was shown, and the ids

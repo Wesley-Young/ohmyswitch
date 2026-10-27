@@ -99,8 +99,8 @@ export default function Plugins() {
   };
 
   return (
-    <main className="min-w-0 flex-1 overflow-y-auto">
-      <PageHeader title="插件" backTo="/providers">
+    <>
+      <PageHeader title="插件">
         {plugins.data && (
           <div className="truncate font-mono text-xs text-muted-foreground" title={plugins.data.path}>
             {plugins.data.path}
@@ -108,7 +108,7 @@ export default function Plugins() {
         )}
       </PageHeader>
       <PageContent>{content()}</PageContent>
-    </main>
+    </>
   );
 }
 

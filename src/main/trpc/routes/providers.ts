@@ -1,8 +1,10 @@
 import {
   createProviderInput,
   importFromHarnessesInput,
+  modelOverrideInput,
   pickModelsInput,
   providerIdInput,
+  removeModelOverrideInput,
   reorderInput,
   reviewModelsInput,
   setModelsInput,
@@ -14,6 +16,14 @@ import { publicProcedure } from '#main/trpc/procedures.ts';
 export function providerRoutes(providers: ProviderService) {
   return {
     list: publicProcedure.query(() => providers.list()),
+    modelIds: publicProcedure.query(() => providers.modelIds()),
+    modelOverrides: publicProcedure.query(() => providers.modelOverrides()),
+    setModelOverride: publicProcedure
+      .input(modelOverrideInput)
+      .mutation(({ input }) => providers.setModelOverride(input)),
+    removeModelOverride: publicProcedure
+      .input(removeModelOverrideInput)
+      .mutation(({ input }) => providers.removeModelOverride(input.modelId)),
     get: publicProcedure.input(providerIdInput).query(({ input }) => providers.get(input.providerId)),
     connection: publicProcedure.input(providerIdInput).query(({ input }) => providers.connection(input.providerId)),
     create: publicProcedure.input(createProviderInput).mutation(({ input }) => providers.create(input)),

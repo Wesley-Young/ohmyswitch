@@ -106,8 +106,8 @@ const list = command({
   },
   async run({ provider, remote }, scope) {
     const ctx = await scope.services();
-    const { models } = ctx.providers.get(provider.id);
-    if (!remote) return models;
+    const { models, effectiveModels } = ctx.providers.get(provider.id);
+    if (!remote) return effectiveModels;
     let listed: ModelInfo[];
     try {
       ({ listed } = await scope.progress((stage) =>

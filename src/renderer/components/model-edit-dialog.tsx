@@ -19,8 +19,10 @@ export function ModelEditDialog({
   open,
   onOpenChange,
   onSave,
+  overriddenFields = [],
 }: {
   model: Model | undefined;
+  overriddenFields?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (model: Model) => void;
@@ -31,6 +33,7 @@ export function ModelEditDialog({
         {model && (
           <ModelEditForm
             model={model}
+            overriddenFields={overriddenFields}
             onSave={(saved) => {
               onSave(saved);
               onOpenChange(false);
@@ -83,7 +86,15 @@ function buildReasoningOptions(initial: Model['reasoningOptions'], efforts: stri
 }
 
 /** Mounted only while the dialog is open, so the fields start from the model every time. */
-function ModelEditForm({ model, onSave }: { model: Model; onSave: (model: Model) => void }) {
+function ModelEditForm({
+  model,
+  onSave,
+  overriddenFields,
+}: {
+  model: Model;
+  onSave: (model: Model) => void;
+  overriddenFields: string[];
+}) {
   const [name, setName] = useState(model.name ?? '');
   const [contextWindow, setContextWindow] = useState(model.contextWindow?.toString() ?? '');
   const [maxOutput, setMaxOutput] = useState(model.maxOutput?.toString() ?? '');
@@ -140,6 +151,9 @@ function ModelEditForm({ model, onSave }: { model: Model; onSave: (model: Model)
           {model.id}
         </DialogTitle>
       </DialogHeader>
+      {overriddenFields.length > 0 && (
+        <p className="text-xs text-muted-foreground">{overriddenFields.join('、')}受全局覆盖，修改供应商值暂不生效。</p>
+      )}
       <FieldGroup className="gap-4">
         <Field>
           <FieldLabel htmlFor="model-name">名称</FieldLabel>

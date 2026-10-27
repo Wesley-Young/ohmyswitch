@@ -4,15 +4,16 @@ import { writeFileAtomic } from '#core/atomic-file.ts';
 import { AppError } from '#core/errors.ts';
 import { withFileLock } from '#core/file-lock.ts';
 import { readTextIfExists } from '#core/files.ts';
-import { storedProvider } from '#core/provider.ts';
+import { modelOverride, storedProvider } from '#core/provider.ts';
 
 import { watch } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const storeFile = z.object({
-  version: z.literal(3),
+  version: z.literal(4),
   providers: z.array(storedProvider),
+  modelOverrides: z.record(z.string().min(1).max(256), modelOverride),
 });
 
 export type StoreData = z.infer<typeof storeFile>;
@@ -21,7 +22,7 @@ const fileName = 'store.json';
 /** Several writes in a row are read once, after the file has been quiet this long. */
 const reloadDelayMs = 100;
 
-const emptyStore = (): StoreData => ({ version: 3, providers: [] });
+const emptyStore = (): StoreData => ({ version: 4, providers: [], modelOverrides: {} });
 
 /**
  * Upgrade an older store file in place, one version at a time. A version newer than this build is left alone,
@@ -34,6 +35,8 @@ function migrate(raw: unknown): unknown {
   if (data.version === 1) data.version = 2;
   // 2 → 3: providers gained the optional `listedModels`; existing data is unchanged.
   if (data.version === 2) data.version = 3;
+  // 3 → 4: add independent, global model overrides.
+  if (data.version === 3) Object.assign(data, { version: 4, modelOverrides: {} });
   return data;
 }
 

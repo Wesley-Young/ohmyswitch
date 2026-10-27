@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AppError } from '#core/errors.ts';
 import { isDirectory } from '#core/files.ts';
 import type {} from '#core/models-dev/service.ts';
-import type { StoredProvider } from '#core/provider.ts';
+import { effectiveModel, type StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { type ApplicationState, assertWritable, chooseKey, entryState, worseState } from './applications.ts';
 import { ConfigEditor, readConfigText } from './editor.ts';
@@ -124,7 +124,7 @@ export class HarnessService extends Service {
         const { key } = provider.harnesses[harness.id];
         const state = files
           ? files.reduce<ApplicationState>(
-              (worst, { file, entries }) => worseState(worst, entryState(file, provider, key, entries)),
+              (worst, { file, entries }) => worseState(worst, entryState(file, this.effective(provider), key, entries)),
               'applied',
             )
           : 'unreadable';
@@ -144,7 +144,7 @@ export class HarnessService extends Service {
 
   private async applyTo(providerId: string, harness: HarnessDescriptor, replace: boolean) {
     const harnessId = harness.id;
-    const provider = this.provider(providerId);
+    const provider = this.effective(this.provider(providerId));
     if (!(await isDirectory(harness.homeDir(this.environment)))) {
       throw new AppError('precondition_failed', `未发现 ${harness.name}`);
     }
@@ -227,7 +227,8 @@ export class HarnessService extends Service {
   }
 
   /** Rewrite a provider in every harness it is applied to, after it changed. Failures are reported, not thrown. */
-  async syncProvider(provider: StoredProvider): Promise<HarnessFailure[]> {
+  async syncProvider(original: StoredProvider): Promise<HarnessFailure[]> {
+    const provider = this.effective(original);
     const failures: HarnessFailure[] = [];
     for (const [harnessId, application] of this.applied(provider)) {
       try {
@@ -413,6 +414,13 @@ export class HarnessService extends Service {
     } catch {
       return harness.homeDir(this.environment);
     }
+  }
+
+  private effective(provider: StoredProvider): StoredProvider {
+    return {
+      ...provider,
+      models: provider.models.map((model) => effectiveModel(model, this.ctx.store.data.modelOverrides)),
+    };
   }
 
   /** Registered harnesses in display order. Harnesses are independent of each other, so they are sorted by name. */

@@ -103,6 +103,17 @@ export const storedProvider = z.object({
   createdAt: z.iso.datetime(),
 });
 
+export const modelOverride = modelInfo.pick({ name: true, contextWindow: true, maxOutput: true });
+export type ModelOverride = z.infer<typeof modelOverride>;
+
+/** Overlay only explicitly configured fields, keeping the provider's original model intact. */
+export function effectiveModel(model: ModelInfo, overrides: Readonly<Record<string, ModelOverride>>): ModelInfo {
+  const override = Object.hasOwn(overrides, model.id) ? overrides[model.id] : undefined;
+  return override
+    ? { ...model, ...Object.fromEntries(Object.entries(override).filter(([, value]) => value !== undefined)) }
+    : model;
+}
+
 export type ModelInput = (typeof modelInputs)[number];
 export type ReasoningOption = z.infer<typeof reasoningOption>;
 export type ModelInfo = z.infer<typeof modelInfo>;

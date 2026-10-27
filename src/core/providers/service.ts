@@ -5,7 +5,7 @@ import type { HarnessFailure } from '#core/harnesses/service.ts';
 import type {} from '#core/http/service.ts';
 import type {} from '#core/icons/service.ts';
 import type {} from '#core/models-dev/service.ts';
-import type { ModelInfo, StoredProvider } from '#core/provider.ts';
+import { effectiveModel, type ModelInfo, type StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { candidateId, groupImports, type ImportCandidate, uniqueName, withImportedModels } from './harness-import.ts';
 import { type CatalogSource, fetchModelCatalog } from './model-catalog.ts';
@@ -13,6 +13,7 @@ import { changesSince, pickedModels } from './model-list.ts';
 import type {
   CreateProviderInput,
   ImportFromHarnessesInput,
+  ModelOverrideInput,
   PickModelsInput,
   ReorderInput,
   ReviewModelsInput,
@@ -66,10 +67,57 @@ export class ProviderService extends Service {
     return this.ctx.store.data.providers.map((provider) => this.summary(provider));
   }
 
+  /** Model ids saved across providers, without connection details or credentials. */
+  modelIds() {
+    return [
+      ...new Set(this.ctx.store.data.providers.flatMap((provider) => provider.models.map((model) => model.id))),
+    ].sort((a, b) => a.localeCompare(b));
+  }
+
   /** The detail view of a provider, with its models. */
   get(providerId: string) {
     const provider = this.find(this.ctx.store.data.providers, providerId);
-    return { ...this.summary(provider), models: provider.models, listedModels: provider.listedModels };
+    return {
+      ...this.summary(provider),
+      models: provider.models,
+      effectiveModels: provider.models.map((model) => effectiveModel(model, this.ctx.store.data.modelOverrides)),
+      listedModels: provider.listedModels,
+    };
+  }
+
+  modelOverrides() {
+    return this.ctx.store.data.modelOverrides;
+  }
+
+  async setModelOverride(input: ModelOverrideInput) {
+    const providers = await this.ctx.store.update((draft) => {
+      Object.defineProperty(draft.modelOverrides, input.modelId, {
+        value: input.override,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+      return draft.providers.filter((provider) => provider.models.some((model) => model.id === input.modelId));
+    });
+    return this.syncOverrideProviders(providers);
+  }
+
+  async removeModelOverride(modelId: string) {
+    const providers = await this.ctx.store.update((draft) => {
+      delete draft.modelOverrides[modelId];
+      return draft.providers.filter((provider) => provider.models.some((model) => model.id === modelId));
+    });
+    return this.syncOverrideProviders(providers);
+  }
+
+  private async syncOverrideProviders(providers: StoredProvider[]) {
+    const failures: { providerId: string; providerName: string; harnessId: string; message: string }[] = [];
+    for (const provider of providers) {
+      for (const failure of await this.ctx.harnesses.syncProvider(provider)) {
+        failures.push({ providerId: provider.id, providerName: provider.name, ...failure });
+      }
+    }
+    return { affected: providers.length, failures };
   }
 
   /** The connection fields for the editor, the only place the API key is returned. */

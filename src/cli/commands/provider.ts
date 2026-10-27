@@ -96,7 +96,7 @@ const show = command({
       ...(showKey ? { apiKey: ctx.providers.connection(provider.id).apiKey } : {}),
       createdAt: detail.createdAt,
       harnesses: applications.map(({ harnessId, key, state }) => ({ ...refOf(harnessId, harnesses), key, state })),
-      models: detail.models,
+      models: detail.effectiveModels,
     };
   },
   render(provider, out) {
