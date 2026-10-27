@@ -9,7 +9,7 @@ import { catalogEntry, ModelsDevIndex, modelsDevUrl, parseModelsDev } from './ca
 
 import { readFile } from 'node:fs/promises';
 
-const maxAgeMs = 24 * 60 * 60 * 1000;
+const maxAgeMs = 60 * 60 * 1000;
 const maxBytes = 32 * 1024 * 1024;
 
 const cacheFile = z.object({
