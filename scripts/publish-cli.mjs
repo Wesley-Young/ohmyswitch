@@ -2,7 +2,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const outDir = 'out/cli';
+const outDir = './out/cli';
 const expectedFiles = ['LICENSE', 'oms.mjs', 'package.json'];
 
 const args = process.argv.slice(2);
