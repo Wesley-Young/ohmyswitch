@@ -14,7 +14,7 @@ npm i -g ohmyswitch
 
 ### App
 
-暂无稳定版本，目前请前往 [Actions](https://github.com/Wesley-Young/ohmyswitch/actions/workflows/build-app.yml) 下载最新的构建产物。仅支持 Windows (x64) 和 macOS (arm64)。
+请前往 Releases 下载。仅支持 Windows (x64) 和 macOS (arm64)。
 
 ## 开发
 
