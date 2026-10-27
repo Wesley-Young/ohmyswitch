@@ -1,4 +1,4 @@
-// Publish the oms CLI to npm: `pnpm publish:cli [--dry-run] [--otp <code>]`. Other options go to `pnpm publish`.
+// Publish the oms CLI to npm: `pnpm publish:cli [--dry-run] [--otp <code>]`. Other options go to the publisher.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
@@ -8,6 +8,9 @@ const expectedFiles = ['LICENSE', 'oms.mjs', 'package.json'];
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+const githubActions = process.env.GITHUB_ACTIONS === 'true';
+const githubRelease =
+  githubActions && process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF === `refs/tags/v${version}`;
 
 function fail(message) {
   console.error(`✖ ${message}`);
@@ -23,8 +26,12 @@ const step = (message) => console.log(`\n▸ ${message}`);
 
 step(`Checking ohmyswitch ${version}`);
 if (!dryRun) {
-  const branch = output('git', ['branch', '--show-current']);
-  if (branch !== 'main') fail(`Publish from main, not ${branch || 'a detached HEAD'}`);
+  if (githubActions) {
+    if (!githubRelease) fail(`Publish from the v${version} tag in GitHub Actions`);
+  } else {
+    const branch = output('git', ['branch', '--show-current']);
+    if (branch !== 'main') fail(`Publish from main, not ${branch || 'a detached HEAD'}`);
+  }
   if (output('git', ['status', '--porcelain'])) fail('Commit or stash the changes first');
 }
 const view = spawnSync('pnpm', ['view', `ohmyswitch@${version}`, 'version', '--json'], { encoding: 'utf8' });
@@ -51,7 +58,12 @@ if (files.join('\n') !== expectedFiles.join('\n')) {
 console.log(files.join('\n'));
 
 step(dryRun ? 'Publishing (dry run)' : 'Publishing');
-run('pnpm', ['publish', outDir, ...args, ...(dryRun ? ['--no-git-checks'] : [])]);
+// npm's OIDC support authenticates tag-triggered GitHub Actions runs without a long-lived token.
+if (githubRelease) {
+  run('npm', ['publish', outDir, ...args]);
+} else {
+  run('pnpm', ['publish', outDir, ...args, ...(dryRun ? ['--no-git-checks'] : [])]);
+}
 
 if (dryRun) {
   console.log(`\n✔ Dry run of ohmyswitch@${version} passed`);
