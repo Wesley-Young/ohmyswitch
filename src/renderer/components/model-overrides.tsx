@@ -4,6 +4,7 @@ import { ChevronDown, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { ModelOverrideFields } from '@/components/model-override-fields';
 import { PageContent, PageHeader } from '@/components/page';
 import {
   AlertDialog,
@@ -23,7 +24,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { refreshProviders } from '@/lib/cache';
-import { formatTokens } from '@/lib/models';
+import { formatTokens, parseOverrideTokens } from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
 
 export function ModelOverrides() {
@@ -76,13 +77,6 @@ export function ModelOverrides() {
     setOpen(true);
   };
   const duplicateId = id.trim() !== editingId && Object.hasOwn(overrides.data ?? {}, id.trim());
-  const parse = (value: string) => {
-    if (!value.trim()) return undefined;
-    const digits = value.replace(/[\s,_]/g, '');
-    if (!/^\d+$/.test(digits)) return NaN;
-    const n = Number(digits);
-    return Number.isSafeInteger(n) && n > 0 ? n : NaN;
-  };
   return (
     <>
       <PageHeader
@@ -169,8 +163,8 @@ export function ModelOverrides() {
               event.preventDefault();
               const modelId = id.trim();
               if (duplicateId) return;
-              const contextWindow = parse(context);
-              const maxOutput = parse(output);
+              const contextWindow = parseOverrideTokens(context);
+              const maxOutput = parseOverrideTokens(output);
               if (!modelId || modelId.length > 256) {
                 setError('请填写模型 ID，最多 256 个字符');
                 return;
@@ -254,32 +248,14 @@ export function ModelOverrides() {
                 </p>
               )}
             </Field>
-            <Field>
-              <FieldLabel htmlFor="override-name">名称</FieldLabel>
-              <Input id="override-name" value={name} maxLength={256} onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="override-context">上下文</FieldLabel>
-                <Input
-                  id="override-context"
-                  inputMode="numeric"
-                  value={context}
-                  onChange={(e) => setContext(e.target.value)}
-                  className="font-mono"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="override-output">最大输出</FieldLabel>
-                <Input
-                  id="override-output"
-                  inputMode="numeric"
-                  value={output}
-                  onChange={(e) => setOutput(e.target.value)}
-                  className="font-mono"
-                />
-              </Field>
-            </div>
+            <ModelOverrideFields
+              name={name}
+              context={context}
+              output={output}
+              onNameChange={setName}
+              onContextChange={setContext}
+              onOutputChange={setOutput}
+            />
             {error && (
               <p role="alert" className="text-destructive">
                 {error}

@@ -78,6 +78,12 @@ export const modelInfo = z.object({
   toolCall: z.boolean().optional(),
 });
 
+/** Both override scopes are limited to display name and token limits. */
+export const modelOverride = modelInfo.pick({ name: true, contextWindow: true, maxOutput: true });
+export type ModelOverride = z.infer<typeof modelOverride>;
+export const providerModelOverride = modelOverride;
+export type ProviderModelOverride = z.infer<typeof providerModelOverride>;
+
 /** A provider as persisted. The API key is stored in plain text; harness configs hold it in plain text anyway. */
 export const storedProvider = z.object({
   id: z.uuid(),
@@ -88,7 +94,10 @@ export const storedProvider = z.object({
   apiKey: z.string(),
   /** An image or web page to take the icon from; unset uses the Base URL's site. */
   iconUrl: z.url({ protocol: /^https?$/ }).optional(),
+  /** Metadata snapshots; discovery and models.dev sync never modify the separate overrides. */
   models: z.array(modelInfo),
+  /** Kept when a model is deselected, so selecting it again restores its explicit settings. */
+  modelOverrides: z.record(z.string().min(1).max(256), providerModelOverride).default({}),
   /**
    * The model ids the provider's model list held when the user last reviewed it. Models listed since are offered
    * as new, and saved models that were listed but no longer are offered for removal. Unset until the list is first
@@ -103,15 +112,22 @@ export const storedProvider = z.object({
   createdAt: z.iso.datetime(),
 });
 
-export const modelOverride = modelInfo.pick({ name: true, contextWindow: true, maxOutput: true });
-export type ModelOverride = z.infer<typeof modelOverride>;
-
-/** Overlay only explicitly configured fields, keeping the provider's original model intact. */
-export function effectiveModel(model: ModelInfo, overrides: Readonly<Record<string, ModelOverride>>): ModelInfo {
-  const override = Object.hasOwn(overrides, model.id) ? overrides[model.id] : undefined;
-  return override
-    ? { ...model, ...Object.fromEntries(Object.entries(override).filter(([, value]) => value !== undefined)) }
-    : model;
+/** Apply explicit fields in order: snapshot → global → provider. */
+export function effectiveModel(
+  model: ModelInfo,
+  globalOverrides: Readonly<Record<string, ModelOverride>>,
+  providerOverrides: Readonly<Record<string, ProviderModelOverride>> = {},
+): ModelInfo {
+  let result = model;
+  for (const overrides of [globalOverrides, providerOverrides]) {
+    const override = Object.hasOwn(overrides, model.id) ? overrides[model.id] : undefined;
+    if (override)
+      result = {
+        ...result,
+        ...Object.fromEntries(Object.entries(override).filter(([, value]) => value !== undefined)),
+      };
+  }
+  return result;
 }
 
 export type ModelInput = (typeof modelInputs)[number];

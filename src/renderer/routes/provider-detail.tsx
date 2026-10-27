@@ -101,6 +101,9 @@ export default function ProviderDetail() {
             providerName={data.name}
             models={data.models}
             effectiveModels={data.effectiveModels}
+            inheritedModels={data.inheritedModels}
+            modelOverrides={data.modelOverrides}
+            globalModelOverrides={data.globalModelOverrides}
           />
         </div>
       </PageContent>

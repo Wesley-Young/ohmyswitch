@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { MoreHorizontal, Pencil, RefreshCw, X } from 'lucide-react';
+import { Info, MoreHorizontal, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useHarnessFeedback } from '@/components/harness-feedback';
+import { ModelDetailsDialog } from '@/components/model-details-dialog';
 import { ModelEditDialog } from '@/components/model-edit-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,15 @@ import {
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { refreshFetchedModels, refreshProviders } from '@/lib/cache';
-import { formatTokens, inputLabels, type Model, optionalInputs, reasoningLabel } from '@/lib/models';
+import {
+  formatTokens,
+  inputLabels,
+  type Model,
+  modelFieldLabels,
+  optionalInputs,
+  type ProviderModelOverride,
+  reasoningLabel,
+} from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
 
 /**
@@ -30,18 +39,24 @@ export function ProviderModels({
   providerName,
   models,
   effectiveModels,
+  inheritedModels,
+  modelOverrides,
+  globalModelOverrides,
 }: {
   providerId: string;
   providerName: string;
   models: Model[];
   effectiveModels: Model[];
+  inheritedModels: Model[];
+  modelOverrides: Record<string, ProviderModelOverride>;
+  globalModelOverrides: Record<string, ProviderModelOverride>;
 }) {
   const report = useHarnessFeedback();
   const [editing, setEditing] = useState<Model>();
   const [editOpen, setEditOpen] = useState(false);
+  const [detailsId, setDetailsId] = useState<string>();
   const [picking, setPicking] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const overrides = useQuery(trpc.providers.modelOverrides.queryOptions());
 
   // Checked in the background to offer what changed; failures are not shown, since nothing was asked for.
   const remote = useQuery(
@@ -85,6 +100,15 @@ export function ProviderModels({
       onError: (error) => toast.error(formError(error)?.message),
     }),
   );
+  const setOverride = useMutation(
+    trpc.providers.setProviderModelOverride.mutationOptions({
+      onSuccess: async (saved, { override }) => {
+        setEditOpen(false);
+        await refreshProviders();
+        report(Object.keys(override).length ? '已保存供应商覆盖' : '已恢复继承', saved);
+      },
+    }),
+  );
   const syncModels = useMutation(
     trpc.providers.syncModels.mutationOptions({
       onSuccess: async (saved) => {
@@ -106,6 +130,7 @@ export function ProviderModels({
     fetchModels.isPending ||
     pickModels.isPending ||
     setModels.isPending ||
+    setOverride.isPending ||
     syncModels.isPending ||
     reviewModels.isPending;
 
@@ -161,7 +186,7 @@ export function ProviderModels({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => syncModels.mutate({ providerId })}>
                   <RefreshCw />
-                  更新模型信息
+                  更新基础信息
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -178,28 +203,38 @@ export function ProviderModels({
           {models.map((model) => (
             <li key={model.id} className="flex items-center gap-1 py-2.5 pr-2 pl-4">
               <ModelSummary model={effectiveModels.find((item) => item.id === model.id) ?? model} />
-              {Object.hasOwn(overrides.data ?? {}, model.id) && (
-                <Badge
-                  variant="outline"
-                  title={(['name', 'contextWindow', 'maxOutput'] as const)
-                    .filter((key) => Object.hasOwn(overrides.data?.[model.id] ?? {}, key))
-                    .map((key) => ({ name: '名称', contextWindow: '上下文', maxOutput: '最大输出' })[key])
-                    .join('、')}
-                >
+              {Object.hasOwn(globalModelOverrides, model.id) && (
+                <Badge variant="outline" title={overrideFields(globalModelOverrides[model.id])}>
                   全局覆盖
+                </Badge>
+              )}
+              {Object.hasOwn(modelOverrides, model.id) && (
+                <Badge variant="secondary" title={overrideFields(modelOverrides[model.id])}>
+                  供应商覆盖
                 </Badge>
               )}
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label={`编辑 ${model.id}`}
+                aria-label={`覆盖 ${model.id}`}
+                title="覆盖"
                 disabled={pending}
                 onClick={() => {
+                  setOverride.reset();
                   setEditing(model);
                   setEditOpen(true);
                 }}
               >
-                <Pencil />
+                <SlidersHorizontal />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`${model.id} 的详细信息`}
+                title="详细信息"
+                onClick={() => setDetailsId(model.id)}
+              >
+                <Info />
               </Button>
               <Button
                 variant="ghost"
@@ -227,23 +262,28 @@ export function ProviderModels({
           <EmptyContent>{pickButton}</EmptyContent>
         </Empty>
       )}
+      <ModelDetailsDialog
+        model={models.find((model) => model.id === detailsId)}
+        effective={effectiveModels.find((model) => model.id === detailsId)}
+        globalOverride={
+          detailsId && Object.hasOwn(globalModelOverrides, detailsId) ? globalModelOverrides[detailsId] : {}
+        }
+        providerOverride={detailsId && Object.hasOwn(modelOverrides, detailsId) ? modelOverrides[detailsId] : {}}
+        open={detailsId !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setDetailsId(undefined);
+        }}
+      />
       <ModelEditDialog
-        model={editing}
-        overriddenFields={
-          editing
-            ? (['name', 'contextWindow', 'maxOutput'] as const)
-                .filter((key) => Object.hasOwn(overrides.data?.[editing.id] ?? {}, key))
-                .map((key) => ({ name: '名称', contextWindow: '上下文', maxOutput: '最大输出' })[key])
-            : []
-        }
+        model={inheritedModels.find((model) => model.id === editing?.id)}
+        override={editing && Object.hasOwn(modelOverrides, editing.id) ? modelOverrides[editing.id] : {}}
         open={editOpen}
+        pending={setOverride.isPending}
+        error={setOverride.error ? formError(setOverride.error)?.message : undefined}
         onOpenChange={setEditOpen}
-        onSave={(saved) =>
-          save(
-            models.map((item) => (item.id === saved.id ? saved : item)),
-            `已保存 ${saved.id}`,
-          )
-        }
+        onSave={(override) => {
+          if (editing) setOverride.mutate({ providerId, modelId: editing.id, override });
+        }}
       />
       <ModelChangesDialog
         open={reviewing}
@@ -614,4 +654,8 @@ function ChangeList({
       </ul>
     </div>
   );
+}
+
+function overrideFields(override: ProviderModelOverride) {
+  return (Object.keys(override) as (keyof ProviderModelOverride)[]).map((key) => modelFieldLabels[key]).join('、');
 }

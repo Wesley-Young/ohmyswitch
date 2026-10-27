@@ -15,6 +15,7 @@ import type {
   ImportFromHarnessesInput,
   ModelOverrideInput,
   PickModelsInput,
+  ProviderModelOverrideInput,
   ReorderInput,
   ReviewModelsInput,
   SetModelsInput,
@@ -80,7 +81,12 @@ export class ProviderService extends Service {
     return {
       ...this.summary(provider),
       models: provider.models,
-      effectiveModels: provider.models.map((model) => effectiveModel(model, this.ctx.store.data.modelOverrides)),
+      modelOverrides: provider.modelOverrides,
+      globalModelOverrides: this.ctx.store.data.modelOverrides,
+      inheritedModels: provider.models.map((model) => effectiveModel(model, this.ctx.store.data.modelOverrides)),
+      effectiveModels: provider.models.map((model) =>
+        effectiveModel(model, this.ctx.store.data.modelOverrides, provider.modelOverrides),
+      ),
       listedModels: provider.listedModels,
     };
   }
@@ -108,6 +114,25 @@ export class ProviderService extends Service {
       return draft.providers.filter((provider) => provider.models.some((model) => model.id === modelId));
     });
     return this.syncOverrideProviders(providers);
+  }
+
+  /** Replace local overrides without touching the snapshot; {} restores inheritance. */
+  setProviderModelOverride(input: ProviderModelOverrideInput) {
+    return this.save(input.providerId, (provider) => {
+      const fields = Object.entries(input.override).filter(([, value]) => value !== undefined);
+      if (!fields.length) {
+        delete provider.modelOverrides[input.modelId];
+        return;
+      }
+      if (!provider.models.some((model) => model.id === input.modelId))
+        throw new AppError('not_found', '模型不存在或已移除');
+      Object.defineProperty(provider.modelOverrides, input.modelId, {
+        value: Object.fromEntries(fields),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    });
   }
 
   private async syncOverrideProviders(providers: StoredProvider[]) {
@@ -252,6 +277,7 @@ export class ProviderService extends Service {
           name,
           ...connection,
           models,
+          modelOverrides: {},
           harnesses: applications,
           createdAt: new Date().toISOString(),
         };
@@ -326,6 +352,7 @@ export class ProviderService extends Service {
       apiKey: input.apiKey,
       ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
       models,
+      modelOverrides: {},
       // The list the user chose from counts as reviewed, so the models left out are not offered as new later.
       ...(listed ? { listedModels: listed.map((model) => model.id) } : {}),
       harnesses: {},

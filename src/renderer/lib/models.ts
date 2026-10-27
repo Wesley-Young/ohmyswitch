@@ -1,6 +1,22 @@
 import type { RouterOutputs } from './trpc';
 
 export type Model = RouterOutputs['providers']['get']['models'][number];
+export type ProviderModelOverride = RouterOutputs['providers']['get']['modelOverrides'][string];
+export const modelFieldLabels = {
+  name: '名称',
+  contextWindow: '上下文',
+  maxOutput: '最大输出',
+  reasoning: '推理',
+  reasoningOptions: '推理选项',
+  interleaved: '推理回传',
+  input: '输入类型',
+  toolCall: '工具调用',
+} satisfies Record<Exclude<keyof Model, 'id'>, string>;
+export const modelOverrideFields = [
+  'name',
+  'contextWindow',
+  'maxOutput',
+] as const satisfies readonly (keyof ProviderModelOverride)[];
 export type ModelInput = NonNullable<Model['input']>[number];
 export type ReasoningOption = NonNullable<Model['reasoningOptions']>[number];
 
@@ -33,6 +49,15 @@ export function formatTokens(tokens: number) {
   if (tokens >= unit * unit) return `${trim(tokens / unit / unit)}M`;
   if (tokens >= unit) return `${trim(tokens / unit)}K`;
   return String(tokens);
+}
+
+/** Blank inputs inherit; NaN distinguishes invalid input from an absent override. */
+export function parseOverrideTokens(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const digits = value.replace(/[\s,_]/g, '');
+  if (!/^\d+$/.test(digits)) return NaN;
+  const tokens = Number(digits);
+  return Number.isSafeInteger(tokens) && tokens > 0 ? tokens : NaN;
 }
 
 const trim = (value: number) => String(Math.round(value * 10) / 10);

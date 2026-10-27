@@ -1,6 +1,19 @@
-import { command, group, text } from '#cli/framework/command.ts';
+import { command, group, select, text } from '#cli/framework/command.ts';
 import { CliError, ParamError } from '#cli/framework/errors.ts';
+import type { ProviderModelOverride } from '#core/provider.ts';
+import { providerModelOverrideInput } from '#core/providers/schemas.ts';
+import { noProviders, providerChoices } from './shared.ts';
 
+const provider = () =>
+  select({
+    summary: 'Override only this provider (default: global)',
+    optional: true,
+    ask: false,
+    placeholder: 'provider',
+    details: 'Its name or id',
+    empty: noProviders,
+    choices: providerChoices,
+  });
 const id = () =>
   text({
     summary: 'Model id (exact match)',
@@ -25,10 +38,11 @@ const tokens = (summary: string) =>
 
 const list = command({
   name: 'list',
-  summary: 'List global model overrides',
-  params: {},
-  async run(_, scope) {
-    return (await scope.services()).providers.modelOverrides();
+  summary: 'List global or provider model overrides',
+  params: { provider: provider() },
+  async run({ provider }, scope): Promise<Record<string, ProviderModelOverride>> {
+    const ctx = await scope.services();
+    return provider ? ctx.providers.get(provider.id).modelOverrides : ctx.providers.modelOverrides();
   },
   render(result, out) {
     out.table(
@@ -44,8 +58,9 @@ const list = command({
 });
 const set = command({
   name: 'set',
-  summary: 'Replace the global override for a model',
+  summary: 'Replace the entire override for a model',
   params: {
+    provider: provider(),
     model: id(),
     name: text({
       summary: 'Display name',
@@ -59,17 +74,32 @@ const set = command({
     context: tokens('Maximum context in tokens'),
     output: tokens('Maximum output in tokens'),
   },
-  async run({ model, name, context, output }, scope) {
-    if (name === undefined && context === undefined && output === undefined)
-      throw new CliError('usage', 'Specify at least one of --name, --context or --output.');
-    return (await scope.services()).providers.setModelOverride({
-      modelId: model,
-      override: {
-        ...(name !== undefined && { name }),
-        ...(context !== undefined && { contextWindow: context }),
-        ...(output !== undefined && { maxOutput: output }),
-      },
-    });
+  async run({ provider, model, name, context, output }, scope) {
+    const override = {
+      ...(name !== undefined && { name }),
+      ...(context !== undefined && { contextWindow: context }),
+      ...(output !== undefined && { maxOutput: output }),
+    };
+    if (!Object.keys(override).length)
+      throw new CliError(
+        'usage',
+        'Specify at least one override field, or use "override remove" to restore inheritance.',
+      );
+    const ctx = await scope.services();
+    if (!provider) return ctx.providers.setModelOverride({ modelId: model, override });
+    if (!ctx.providers.get(provider.id).models.some((item) => item.id === model))
+      throw new CliError('usage', 'This model is not saved in the provider. Add or select it first.');
+    const saved = await ctx.providers.setProviderModelOverride(
+      providerModelOverrideInput.parse({ providerId: provider.id, modelId: model, override }),
+    );
+    return {
+      affected: 1,
+      failures: saved.harnessFailures.map((failure) => ({
+        providerId: saved.id,
+        providerName: saved.name,
+        ...failure,
+      })),
+    };
   },
   render(result, out) {
     out.success(`Saved override for ${result.affected} providers.`);
@@ -81,11 +111,24 @@ const set = command({
 const remove = command({
   name: 'remove',
   aliases: ['rm'],
-  summary: 'Remove a global model override',
-  params: { model: id() },
-  confirm: ({ model }) => `Remove the global override for "${model}"?`,
-  async run({ model }, scope) {
-    return (await scope.services()).providers.removeModelOverride(model);
+  summary: 'Remove an override and restore inheritance',
+  params: { provider: provider(), model: id() },
+  confirm: ({ provider, model }) =>
+    `Remove the ${provider ? `provider "${provider.name}"` : 'global'} override for "${model}"?`,
+  async run({ provider, model }, scope) {
+    const ctx = await scope.services();
+    if (!provider) return ctx.providers.removeModelOverride(model);
+    const saved = await ctx.providers.setProviderModelOverride(
+      providerModelOverrideInput.parse({ providerId: provider.id, modelId: model, override: {} }),
+    );
+    return {
+      affected: 1,
+      failures: saved.harnessFailures.map((failure) => ({
+        providerId: saved.id,
+        providerName: saved.name,
+        ...failure,
+      })),
+    };
   },
   render(result, out) {
     out.success(`Removed override for ${result.affected} providers.`);
@@ -96,6 +139,6 @@ const remove = command({
 });
 export const override = group({
   name: 'override',
-  summary: 'Manage global model overrides',
+  summary: 'Manage global and provider model overrides',
   children: [list, set, remove],
 });

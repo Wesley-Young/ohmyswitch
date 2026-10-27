@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { endpoints } from '#core/endpoints.ts';
 import { harnessId } from '#core/harnesses/types.ts';
-import { baseUrl, iconUrl, modelInfo, modelOverride, providerName } from '#core/provider.ts';
+import { baseUrl, iconUrl, modelInfo, modelOverride, providerModelOverride, providerName } from '#core/provider.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
 
@@ -67,6 +67,13 @@ export const modelOverrideInput = z.object({
 });
 export const removeModelOverrideInput = z.object({ modelId });
 export type ModelOverrideInput = z.infer<typeof modelOverrideInput>;
+
+/** Replace one model's provider overrides. An empty object restores inheritance for every field. */
+export const providerModelOverrideInput = providerIdInput.extend({
+  modelId,
+  override: providerModelOverride.strict(),
+});
+export type ProviderModelOverrideInput = z.infer<typeof providerModelOverrideInput>;
 
 /**
  * The outcome of choosing which of the provider's listed models to keep: the list as it was shown, and the ids

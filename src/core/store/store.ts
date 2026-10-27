@@ -11,7 +11,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const storeFile = z.object({
-  version: z.literal(4),
+  version: z.literal(5),
   providers: z.array(storedProvider),
   modelOverrides: z.record(z.string().min(1).max(256), modelOverride),
 });
@@ -22,7 +22,7 @@ const fileName = 'store.json';
 /** Several writes in a row are read once, after the file has been quiet this long. */
 const reloadDelayMs = 100;
 
-const emptyStore = (): StoreData => ({ version: 4, providers: [], modelOverrides: {} });
+const emptyStore = (): StoreData => ({ version: 5, providers: [], modelOverrides: {} });
 
 /**
  * Upgrade an older store file in place, one version at a time. A version newer than this build is left alone,
@@ -37,6 +37,8 @@ function migrate(raw: unknown): unknown {
   if (data.version === 2) data.version = 3;
   // 3 → 4: add independent, global model overrides.
   if (data.version === 3) Object.assign(data, { version: 4, modelOverrides: {} });
+  // 4 → 5: storedProvider supplies empty local overrides; historical snapshots keep their values.
+  if (data.version === 4) data.version = 5;
   return data;
 }
 

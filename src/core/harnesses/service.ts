@@ -419,7 +419,9 @@ export class HarnessService extends Service {
   private effective(provider: StoredProvider): StoredProvider {
     return {
       ...provider,
-      models: provider.models.map((model) => effectiveModel(model, this.ctx.store.data.modelOverrides)),
+      models: provider.models.map((model) =>
+        effectiveModel(model, this.ctx.store.data.modelOverrides, provider.modelOverrides),
+      ),
     };
   }
 

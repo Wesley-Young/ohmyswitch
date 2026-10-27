@@ -4,6 +4,7 @@ import {
   modelOverrideInput,
   pickModelsInput,
   providerIdInput,
+  providerModelOverrideInput,
   removeModelOverrideInput,
   reorderInput,
   reviewModelsInput,
@@ -24,6 +25,9 @@ export function providerRoutes(providers: ProviderService) {
     removeModelOverride: publicProcedure
       .input(removeModelOverrideInput)
       .mutation(({ input }) => providers.removeModelOverride(input.modelId)),
+    setProviderModelOverride: publicProcedure
+      .input(providerModelOverrideInput)
+      .mutation(({ input }) => providers.setProviderModelOverride(input)),
     get: publicProcedure.input(providerIdInput).query(({ input }) => providers.get(input.providerId)),
     connection: publicProcedure.input(providerIdInput).query(({ input }) => providers.connection(input.providerId)),
     create: publicProcedure.input(createProviderInput).mutation(({ input }) => providers.create(input)),
