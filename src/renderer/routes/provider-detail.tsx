@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formError, queryClient, trpc } from '@/lib/trpc';
+import { vendorOf } from '@/lib/vendors';
 
 export default function ProviderDetail() {
   const { providerId = '' } = useParams();
@@ -59,7 +60,7 @@ export default function ProviderDetail() {
     <>
       <PageHeader
         title={data.name}
-        icon={<ProviderAvatar providerId={data.id} name={data.name} endpoint={data.endpoint} size="lg" />}
+        icon={<ProviderAvatar providerId={data.id} name={data.name} vendor={vendorOf(data)} size="lg" />}
         actions={
           <>
             <Button nativeButton={false} render={<Link to={`/providers/${data.id}/edit`} />}>

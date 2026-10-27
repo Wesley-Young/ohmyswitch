@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { endpoints } from './endpoints.ts';
 import { harnessId } from './harnesses/types.ts';
+import { vendors } from './vendors.ts';
 
 export const providerName = z
   .string()
@@ -91,6 +92,11 @@ export const storedProvider = z.object({
   /** The root address requests go to; endpoints are appended to it. */
   baseUrl,
   endpoint: z.enum(endpoints),
+  /**
+   * The model vendor, shown as the badge on the provider's icon and compared by import links. Unset means the
+   * badge follows the endpoint. It is display information: it is not written into harness configs.
+   */
+  vendor: z.enum(vendors).optional(),
   apiKey: z.string(),
   /** An image or web page to take the icon from; unset uses the Base URL's site. */
   iconUrl: z.url({ protocol: /^https?$/ }).optional(),

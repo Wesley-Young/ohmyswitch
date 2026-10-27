@@ -29,6 +29,7 @@ import { ProviderAvatar } from '@/components/provider-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formError, queryClient, type RouterOutputs, trpc } from '@/lib/trpc';
+import { vendorOf } from '@/lib/vendors';
 
 type Provider = RouterOutputs['providers']['list'][number];
 type Application = RouterOutputs['harnesses']['applications'][string][number];
@@ -178,7 +179,7 @@ function ProviderItem({ provider, applications }: { provider: Provider; applicat
           )
         }
       >
-        <ProviderAvatar providerId={provider.id} name={provider.name} endpoint={provider.endpoint} />
+        <ProviderAvatar providerId={provider.id} name={provider.name} vendor={vendorOf(provider)} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{provider.name}</span>

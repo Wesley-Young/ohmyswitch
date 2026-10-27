@@ -22,6 +22,7 @@ import {
   endpointChoices,
   endpointDetails,
   endpointLabels,
+  followEndpoint,
   harnessIndex,
   modelChoice,
   modelStages,
@@ -30,6 +31,9 @@ import {
   problemsOf,
   providerParam,
   refOf,
+  vendorChoices,
+  vendorDetails,
+  vendorLabels,
   warnProblems,
 } from './shared.ts';
 
@@ -85,13 +89,14 @@ const show = command({
     const ctx = await scope.services();
     const harnesses = await harnessIndex(scope);
     const detail = ctx.providers.get(provider.id);
-    const { iconUrl } = ctx.providers.connection(provider.id);
+    const { iconUrl, vendor } = ctx.providers.connection(provider.id);
     const applications = (await ctx.harnesses.applications())[provider.id] ?? [];
     return {
       id: detail.id,
       name: detail.name,
       baseUrl: detail.baseUrl,
       endpoint: detail.endpoint,
+      vendor,
       iconUrl: iconUrl || undefined,
       ...(showKey ? { apiKey: ctx.providers.connection(provider.id).apiKey } : {}),
       createdAt: detail.createdAt,
@@ -105,6 +110,10 @@ const show = command({
       ['ID', provider.id],
       ['Base URL', provider.baseUrl],
       ['Endpoint', `${endpointLabels[provider.endpoint]} (${provider.endpoint})`],
+      [
+        'Vendor',
+        provider.vendor ? vendorLabels[provider.vendor] : `Follows the endpoint (${endpointLabels[provider.endpoint]})`,
+      ],
       ['Icon', provider.iconUrl],
       ['API key', provider.apiKey],
     ]);
@@ -170,6 +179,13 @@ const add = command({
       details: endpointDetails,
       choices: endpointChoices,
     }),
+    vendor: select({
+      summary: 'Model vendor',
+      placeholder: 'vendor',
+      details: vendorDetails,
+      optional: true,
+      choices: vendorChoices,
+    }),
     apiKey: secret({ summary: 'API key', parse: (raw) => parseWith(createProviderInput.shape.apiKey, raw) }),
     allModels: flag({ summary: 'Fetch the models the provider serves and keep all of them' }),
     // Right after the key: fetching the list needs only the connection, and shows at once if the key is wrong.
@@ -210,6 +226,7 @@ const add = command({
       name: values.name,
       baseUrl: values.baseUrl,
       endpoint: values.endpoint,
+      vendor: values.vendor === followEndpoint ? undefined : values.vendor,
       apiKey: values.apiKey,
       iconUrl: values.iconUrl,
       ...(fetched
@@ -263,6 +280,14 @@ const edit = command({
       initial: (scope) => chosen(scope).endpoint,
       choices: endpointChoices,
     }),
+    vendor: select({
+      summary: 'Model vendor',
+      placeholder: 'vendor',
+      details: vendorDetails,
+      optional: true,
+      initial: (scope) => chosen(scope).vendor ?? followEndpoint,
+      choices: vendorChoices,
+    }),
     apiKey: secret({
       summary: 'API key',
       optional: true,
@@ -285,7 +310,7 @@ const edit = command({
       throw new CliError(
         'usage',
         'Nothing to change',
-        'Pass --name, --base-url, --endpoint, --icon-url, --api-key-stdin or --api-key-env.',
+        'Pass --name, --base-url, --endpoint, --vendor, --icon-url, --api-key-stdin or --api-key-env.',
       );
     }
     if (changes.name !== undefined) await assertNameFree(scope, changes.name, provider.id);
@@ -296,6 +321,7 @@ const edit = command({
         name: changes.name ?? current.name,
         baseUrl: changes.baseUrl ?? current.baseUrl,
         endpoint: changes.endpoint ?? current.endpoint,
+        vendor: changes.vendor === followEndpoint ? undefined : (changes.vendor ?? current.vendor),
         apiKey: changes.apiKey ?? current.apiKey,
         iconUrl: changes.iconUrl ?? current.iconUrl,
       }),

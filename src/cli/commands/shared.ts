@@ -8,6 +8,7 @@ import type { ApplicationState } from '#core/harnesses/applications.ts';
 import type { HarnessFailure, HarnessService } from '#core/harnesses/service.ts';
 import type { ModelInfo } from '#core/provider.ts';
 import type { ModelStage, ProviderService } from '#core/providers/service.ts';
+import { type Vendor, vendors } from '#core/vendors.ts';
 
 export type ProviderSummary = ReturnType<ProviderService['list']>[number];
 export type HarnessInfo = Awaited<ReturnType<HarnessService['list']>>[number];
@@ -30,6 +31,51 @@ export const endpointLabels = {
   '/v1/messages': 'Anthropic Messages',
   '/v1beta/generateContent': 'Google Generative AI',
 } satisfies Record<Endpoint, string>;
+
+/** Vendor names, as the GUI shows them. */
+export const vendorLabels = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  google: 'Google',
+  deepseek: 'DeepSeek',
+  qwen: 'Qwen',
+  moonshot: 'Moonshot',
+  zhipu: 'Zhipu',
+  xai: 'xAI',
+  mistral: 'Mistral',
+  meta: 'Meta',
+  groq: 'Groq',
+  minimax: 'MiniMax',
+  doubao: 'Doubao',
+  hunyuan: 'Hunyuan',
+  baidu: 'Baidu',
+  openrouter: 'OpenRouter',
+  siliconcloud: 'SiliconCloud',
+  stepfun: 'StepFun',
+  cohere: 'Cohere',
+  yi: 'Yi',
+  baichuan: 'Baichuan',
+} satisfies Record<Vendor, string>;
+
+/** What --vendor accepts to leave the vendor unset, so the badge follows the endpoint. */
+export const followEndpoint = 'follow';
+
+export const vendorChoices = (): Choice<Vendor | typeof followEndpoint>[] => [
+  {
+    value: followEndpoint,
+    keys: [followEndpoint, 'auto'],
+    label: 'Follow the endpoint',
+    hint: "The badge of the endpoint's vendor",
+  },
+  ...vendors.map((vendor) => ({
+    value: vendor,
+    keys: [vendor],
+    label: vendorLabels[vendor],
+    hint: vendor === vendorLabels[vendor] ? undefined : vendor,
+  })),
+];
+
+export const vendorDetails = `One of ${listing(vendors)}, or ${followEndpoint} to show the endpoint's vendor`;
 
 /** How an application's entry looks now. */
 export const applicationStateLabels = {

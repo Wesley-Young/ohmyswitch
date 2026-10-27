@@ -9,6 +9,7 @@ ohmyswitch://provider/import?name=Example
   &baseUrl=https%3A%2F%2Fapi.example.com
   &endpoint=%2Fv1%2Fmessages
   &endpoint=%2Fv1%2Fchat%2Fcompletions
+  &vendor=anthropic
   &apiKey=sk-xxx
   &iconUrl=https%3A%2F%2Fexample.com
   &model=claude-sonnet-4-5
@@ -22,6 +23,7 @@ ohmyswitch://provider/import?name=Example
 | `name` | 是 | 否 | 供应商名称，最多 128 个字符 |
 | `baseUrl` | 是 | 否 | http(s) 根地址。结尾的 `/v1`、`/v1beta` 会被去掉，端点路径由 ohmyswitch 拼接 |
 | `endpoint` | 是 | 是 | 支持的端点，按推荐顺序排列，导入页默认选第一个。取值见下表 |
+| `vendor` | 否 | 否 | 模型厂商，决定供应商图标右下角的角标。也是更新已有供应商的依据，见下节。取值见下表；不认识的取值会被忽略 |
 | `apiKey` | 否 | 否 | 不提供时由用户自己填写 |
 | `iconUrl` | 否 | 否 | 图标所在的网页或图片地址。不提供时使用 `baseUrl` 所在网站的图标 |
 | `model` | 否 | 是 | 模型 id。模型的上下文长度等信息由 ohmyswitch 从 models.dev 补全。不提供时，用户可以在导入后获取模型 |
@@ -33,19 +35,52 @@ ohmyswitch://provider/import?name=Example
 | `/v1/messages` | Anthropic Messages |
 | `/v1beta/generateContent` | Google Generative AI |
 
-- 不认识的参数和 `endpoint` 取值会被忽略。一个可用的 `endpoint` 都没有时，用户在全部端点中选择。
+| `vendor` | 厂商 |
+|---|---|
+| `openai` | OpenAI |
+| `anthropic` | Anthropic（Claude 的角标） |
+| `google` | Google |
+| `deepseek` | DeepSeek |
+| `qwen` | Qwen |
+| `moonshot` | Moonshot |
+| `zhipu` | Zhipu |
+| `xai` | xAI |
+| `mistral` | Mistral |
+| `meta` | Meta |
+| `groq` | Groq |
+| `minimax` | MiniMax |
+| `doubao` | Doubao |
+| `hunyuan` | Hunyuan |
+| `baidu` | Baidu |
+| `openrouter` | OpenRouter |
+| `siliconcloud` | SiliconCloud |
+| `stepfun` | StepFun |
+| `cohere` | Cohere |
+| `yi` | Yi |
+| `baichuan` | Baichuan |
+
+- 不认识的参数、`endpoint` 和 `vendor` 取值会被忽略。一个可用的 `endpoint` 都没有时，用户在全部端点中选择。
 - 参数不合法（如 `baseUrl` 不是 http(s) 地址）不会让整个链接失效，用户在导入页的对应字段上看到错误并修改。
 - 以后有不兼容的改动时会换用新的路径，`provider/import` 的含义保持不变。
 - 整个链接最多 64 KB。
 
 ## 更新已有的供应商
 
-如果已有供应商的 Base URL 与链接中的 `baseUrl` 属于同一个 origin（协议、主机、端口都相同），端点又是链接中列出的端点之一，导入页默认更新这个供应商，用户也可以改为添加新的供应商。
+链接带 `vendor` 时，如果已有供应商同时满足下面三点，导入页默认更新这个供应商，用户也可以改为添加新的供应商：
+
+- Base URL 与链接中的 `baseUrl` 属于同一个 origin（协议、主机、端口都相同）；
+- 端点是链接中列出的端点之一；
+- 供应商的模型厂商与链接中的 `vendor` 相同。
+
+供应商的模型厂商必须是用户在 ohmyswitch 中选定的。没有设置模型厂商的供应商（包括早期版本创建的）不算匹配：它的角标只是按端点推断出来的，不能说明它就是链接指向的供应商。需要更新这类供应商时，先在编辑页为它选好模型厂商。
+
+不带 `vendor` 的链接不会更新任何供应商，只会添加新的供应商：没有厂商，同一个 origin 上的两个供应商就无法区分，猜错会覆盖别人。
 
 更新时：
 
 - 保留原有的名称和模型，以及已经应用到的 Harness（这些 Harness 的配置会随之更新）。
 - Base URL 换成链接中的。链接提供了 `apiKey`、`iconUrl` 时换成链接中的，没提供时保留原值。
+- 模型厂商保持原值。
 
 适合站点为用户换了新的 API Key 后再导入一次。
 

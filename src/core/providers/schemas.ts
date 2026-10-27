@@ -3,15 +3,18 @@ import { z } from 'zod';
 import { endpoints } from '#core/endpoints.ts';
 import { harnessId } from '#core/harnesses/types.ts';
 import { baseUrl, iconUrl, modelInfo, modelOverride, providerModelOverride, providerName } from '#core/provider.ts';
+import { vendors } from '#core/vendors.ts';
 
 export const providerIdInput = z.object({ providerId: z.uuid() });
 
-/** The connection fields of a provider, edited and saved together. */
+/** The fields of a provider the editor saves together; they are not all connection details. */
 const connectionInput = z.object({
   name: providerName,
   baseUrl,
   apiKey: z.string().trim().min(1, { error: '请填写 API Key' }).max(4096),
   endpoint: z.enum(endpoints, { error: '请选择端点' }),
+  /** Unset follows the endpoint, which is also how an import link without one compares. */
+  vendor: z.enum(vendors).optional(),
   /** Unset or empty uses the icon of the Base URL's site. */
   iconUrl: iconUrl.optional(),
 });

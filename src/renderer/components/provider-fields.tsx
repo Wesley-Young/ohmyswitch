@@ -2,7 +2,9 @@ import { SecretInput } from '@/components/secret-input';
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { VendorField } from '@/components/vendor-picker';
 import { type Endpoint, endpointLabels, endpoints } from '@/lib/endpoints';
+import type { Vendor } from '@/lib/vendors';
 
 export interface ProviderValues {
   name: string;
@@ -10,6 +12,8 @@ export interface ProviderValues {
   apiKey: string;
   /** Unset until the user picks one; there is no default endpoint. */
   endpoint: Endpoint | undefined;
+  /** The badge shown on the icon; unset follows the endpoint. */
+  vendor?: Vendor;
   /** An image or web page to take the icon from; empty uses the Base URL's site. */
   iconUrl: string;
 }
@@ -19,6 +23,7 @@ export const emptyProviderValues: ProviderValues = {
   baseUrl: '',
   apiKey: '',
   endpoint: undefined,
+  vendor: undefined,
   iconUrl: '',
 };
 
@@ -33,8 +38,8 @@ function siteOf(baseUrl: string) {
 }
 
 /**
- * The connection fields of a provider: name, Base URL, API Key, endpoint and icon. Only the text inputs are
- * width-limited.
+ * The fields of a provider the editor shows: name, Base URL, API Key, endpoint, vendor and icon. Only the text
+ * inputs are width-limited.
  */
 export function ProviderFields({
   values,
@@ -110,6 +115,7 @@ export function ProviderFields({
         </RadioGroup>
         <FieldError>{fieldError('endpoint')}</FieldError>
       </FieldSet>
+      <VendorField endpoint={values.endpoint} vendor={values.vendor} onChange={(vendor) => set('vendor', vendor)} />
       <Field className="max-w-md" data-invalid={Boolean(fieldError('iconUrl'))}>
         <FieldLabel htmlFor="provider-icon-url">图标</FieldLabel>
         <Input

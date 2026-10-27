@@ -106,6 +106,7 @@ function CreateForm({ pending, onDone }: { pending: Pending; onDone: () => void 
     baseUrl: draft.baseUrl,
     apiKey: draft.apiKey,
     endpoint: endpointOptionsOf(pending)[0],
+    vendor: draft.vendor,
     iconUrl: draft.iconUrl,
   };
 
@@ -156,6 +157,7 @@ function UpdateForm({ pending, match, onDone }: { pending: Pending; match: Match
     baseUrl: draft.baseUrl,
     apiKey: draft.apiKey || connection.data.apiKey,
     endpoint: match.endpoint,
+    vendor: connection.data.vendor,
     iconUrl: draft.iconUrl || connection.data.iconUrl,
   };
 

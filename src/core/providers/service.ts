@@ -145,10 +145,10 @@ export class ProviderService extends Service {
     return { affected: providers.length, failures };
   }
 
-  /** The connection fields for the editor, the only place the API key is returned. */
+  /** The editable fields for the editor, the only place the API key is returned. */
   connection(providerId: string) {
-    const { name, baseUrl, apiKey, endpoint, iconUrl } = this.find(this.ctx.store.data.providers, providerId);
-    return { name, baseUrl, apiKey, endpoint, iconUrl: iconUrl ?? '' };
+    const { name, baseUrl, apiKey, endpoint, vendor, iconUrl } = this.find(this.ctx.store.data.providers, providerId);
+    return { name, baseUrl, apiKey, endpoint, vendor, iconUrl: iconUrl ?? '' };
   }
 
   /**
@@ -326,6 +326,8 @@ export class ProviderService extends Service {
       provider.baseUrl = input.baseUrl;
       provider.apiKey = input.apiKey;
       provider.endpoint = input.endpoint;
+      if (input.vendor) provider.vendor = input.vendor;
+      else delete provider.vendor;
       if (input.iconUrl) provider.iconUrl = input.iconUrl;
       else delete provider.iconUrl;
     });
@@ -349,6 +351,7 @@ export class ProviderService extends Service {
       name: input.name,
       baseUrl: input.baseUrl,
       endpoint: input.endpoint,
+      ...(input.vendor ? { vendor: input.vendor } : {}),
       apiKey: input.apiKey,
       ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
       models,
@@ -488,6 +491,7 @@ export class ProviderService extends Service {
       name: provider.name,
       baseUrl: provider.baseUrl,
       endpoint: provider.endpoint,
+      vendor: provider.vendor,
       modelCount: provider.models.length,
       harnesses: this.ctx.harnesses.appliedTo(provider),
       createdAt: provider.createdAt,

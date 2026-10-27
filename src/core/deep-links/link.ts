@@ -1,5 +1,6 @@
 import { type Endpoint, endpoints } from '#core/endpoints.ts';
 import { baseUrl } from '#core/provider.ts';
+import { type Vendor, vendors } from '#core/vendors.ts';
 
 /** The URL scheme ohmyswitch registers with the operating system. */
 export const linkScheme = 'ohmyswitch';
@@ -17,6 +18,8 @@ export interface ImportDraft {
   baseUrl: string;
   /** Known endpoints from the link, in the site's order; empty when it listed none ohmyswitch knows. */
   endpoints: Endpoint[];
+  /** The model vendor, which the link must name to update an existing provider. Unset otherwise. */
+  vendor?: Vendor;
   apiKey: string;
   iconUrl: string;
   modelIds: string[];
@@ -45,6 +48,8 @@ export function parseLink(link: string): ParsedLink {
   const text = (key: string, max: number) => (params.get(key) ?? '').trim().slice(0, max);
   const known = new Set<string>(endpoints);
   const listed = params.getAll('endpoint').map((value) => value.trim());
+  const named = text('vendor', 32);
+  const vendor = vendors.find((candidate) => candidate === named);
   const modelIds = params
     .getAll('model')
     .map((value) => value.trim())
@@ -56,6 +61,7 @@ export function parseLink(link: string): ParsedLink {
       name: text('name', 128),
       baseUrl: normalizeBaseUrl(text('baseUrl', 2048)),
       endpoints: [...new Set(listed.filter((value): value is Endpoint => known.has(value)))],
+      ...(vendor ? { vendor } : {}),
       apiKey: text('apiKey', 4096),
       iconUrl: text('iconUrl', 2048),
       modelIds: [...new Set(modelIds)].slice(0, maxModels),
@@ -67,17 +73,28 @@ interface Candidate {
   id: string;
   baseUrl: string;
   endpoint: Endpoint;
+  vendor?: Vendor;
 }
 
 /**
  * The existing provider an import updates: one on the same origin as the link's Base URL, serving one of the
- * link's endpoints. Endpoints are tried in the link's order, so the site's preferred one wins.
+ * link's endpoints, with the vendor the link names. Endpoints are tried in the link's order, so the site's
+ * preferred one wins.
+ *
+ * A link without a vendor updates nothing: without it, the provider it means cannot be told apart from another
+ * one on the same origin, so it is added as a new provider instead. A stored provider without a vendor is not a
+ * match either, even when its endpoint implies the same vendor: the vendor has to have been chosen.
  */
 export function findMatch<T extends Candidate>(providers: readonly T[], draft: ImportDraft) {
+  const { vendor } = draft;
+  if (!vendor) return undefined;
   const origin = originOf(draft.baseUrl);
   if (!origin) return undefined;
   for (const endpoint of draft.endpoints) {
-    const match = providers.find((provider) => provider.endpoint === endpoint && originOf(provider.baseUrl) === origin);
+    const match = providers.find(
+      (provider) =>
+        provider.vendor === vendor && provider.endpoint === endpoint && originOf(provider.baseUrl) === origin,
+    );
     if (match) return match;
   }
   return undefined;

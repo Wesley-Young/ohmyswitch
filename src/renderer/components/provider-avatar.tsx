@@ -2,23 +2,23 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useState } from 'react';
 
-import { EndpointLogo } from '@/components/endpoint-logo';
-import type { Endpoint } from '@/lib/endpoints';
+import { VendorLogo } from '@/components/vendor-logo';
 import { trpc } from '@/lib/trpc';
+import type { Vendor } from '@/lib/vendors';
 
 /**
- * The provider's icon, or its initial while there is none, with the vendor logo of its endpoint in the
- * bottom-right corner. Both take the same box, so the icon arriving does not move anything.
+ * The provider's icon, or its initial while there is none, with the logo of its model vendor in the bottom-right
+ * corner. Both take the same box, so the icon arriving does not move anything.
  */
 export function ProviderAvatar({
   providerId,
   name,
-  endpoint,
+  vendor,
   size = 'default',
 }: {
   providerId: string;
   name: string;
-  endpoint: Endpoint;
+  vendor: Vendor;
   size?: 'default' | 'lg';
 }) {
   const large = size === 'lg';
@@ -42,8 +42,8 @@ export function ProviderAvatar({
           name.slice(0, 1)
         )}
       </div>
-      <EndpointLogo
-        endpoint={endpoint}
+      <VendorLogo
+        vendor={vendor}
         size={large ? 14 : 12}
         className={cn('absolute -right-1 -bottom-1 ring-2 ring-background', large ? 'size-4.5' : 'size-3.5')}
       />
