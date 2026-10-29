@@ -114,6 +114,11 @@ export interface ParamSpec {
    * typed instead. The command line still takes any value `parse` accepts.
    */
   suggest?: (scope: Scope) => Promise<Suggestions>;
+  /**
+   * What shell completion offers, by each option's keys. Selects offer their `choices` unless this is false, as it
+   * should be when getting them is slow, such as over the network; other kinds offer nothing unless given this.
+   */
+  complete?: false | ((scope: Scope) => Promise<readonly Choice<unknown>[]> | readonly Choice<unknown>[]);
 }
 
 /** A parameter whose resolved value has type `V`. */
@@ -133,6 +138,7 @@ interface CommonOptions {
   placeholder?: string;
   details?: string;
   ask?: ParamSpec['ask'];
+  complete?: ParamSpec['complete'];
 }
 
 type Requirement = { optional?: false } | { optional: true; requiredWhen?: ParamSpec['requiredWhen'] };
@@ -175,8 +181,12 @@ export function textList<T = string>(
  * A secret such as an API key. It never appears on the command line: it is read with `--<flag>-stdin` or
  * `--<flag>-env <var>`, or typed into a masked prompt.
  */
-export function secret(options: Omit<TextOptions<string>, 'initial'> & { optional?: false }): Param<string>;
-export function secret(options: Omit<TextOptions<string>, 'initial'> & { optional: true }): Param<string | undefined>;
+export function secret(
+  options: Omit<TextOptions<string>, 'initial' | 'complete'> & { optional?: false },
+): Param<string>;
+export function secret(
+  options: Omit<TextOptions<string>, 'initial' | 'complete'> & { optional: true },
+): Param<string | undefined>;
 export function secret(options: TextOptions<unknown> & Requirement): ParamSpec {
   return { parse: (raw: string) => raw, ...base('secret', options) };
 }
@@ -207,7 +217,7 @@ export function selectMany<T>(
 }
 
 /** A boolean switch, false unless given. */
-export function flag(options: Omit<CommonOptions, 'positional' | 'placeholder' | 'ask'>): Param<boolean> {
+export function flag(options: Omit<CommonOptions, 'positional' | 'placeholder' | 'ask' | 'complete'>): Param<boolean> {
   return { ...base('flag', { ...options, optional: true }), ask: false };
 }
 

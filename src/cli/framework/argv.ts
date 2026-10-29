@@ -28,7 +28,7 @@ export interface Invocation {
   options: Record<string, OptionValue>;
 }
 
-const globalByToken = new Map<string, GlobalName>(
+export const globalByToken = new Map<string, GlobalName>(
   Object.entries(globalOptions).flatMap(([name, option]) => {
     const tokens: [string, GlobalName][] = [[`--${name}`, name as GlobalName]];
     if ('short' in option) tokens.push([`-${option.short}`, name as GlobalName]);

@@ -145,6 +145,8 @@ const pick = command({
       optional: true,
       requiredWhen: (values) => !values.all,
       empty: noListedModels,
+      // Listed by the provider over the network: too slow for shell completion.
+      complete: false,
       choices: listedChoices,
       // Like the GUI: start from the saved models, or from everything listed when there are none yet.
       async initial(scope) {
@@ -177,6 +179,8 @@ const add = command({
       positional: true,
       placeholder: 'model',
       details: 'By id, from the list the provider returns',
+      // Listed by the provider over the network: too slow for shell completion.
+      complete: false,
       empty: noListedModels,
       async choices(scope) {
         const ctx = await scope.services();
@@ -299,12 +303,16 @@ const review = command({
       summary: 'New models to add',
       placeholder: 'model',
       optional: true,
+      // Listed by the provider over the network: too slow for shell completion.
+      complete: false,
       choices: async (scope) => (await changes(scope)).added.map(modelChoice),
     }),
     remove: selectMany({
       summary: 'Models no longer listed to remove',
       placeholder: 'model',
       optional: true,
+      // Listed by the provider over the network: too slow for shell completion.
+      complete: false,
       choices: async (scope) => (await changes(scope)).removed.map(modelChoice),
       // Like the GUI: models that are gone start out ticked.
       initial: async (scope) => (await changes(scope)).removed.map((model) => model.id),
