@@ -2,7 +2,7 @@
   "name": "ohmyswitch",
   "productName": "ohmyswitch",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Provider-first config manager for AI coding harnesses",
   "author": "Wei FeiYang",
   "license": "MIT",
