@@ -1,9 +1,10 @@
 import { Autocomplete } from '@base-ui/react/autocomplete';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronDown, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, Settings2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { ModelTitle } from '@/components/model-meta';
 import { ModelOverrideFields } from '@/components/model-override-fields';
 import { PageContent, PageHeader } from '@/components/page';
 import {
@@ -16,7 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -24,7 +24,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { refreshProviders } from '@/lib/cache';
-import { formatTokens, parseOverrideTokens } from '@/lib/models';
+import { formatTokens, modelFieldLabels, parseOverrideTokens } from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
 
 export function ModelOverrides() {
@@ -99,48 +99,60 @@ export function ModelOverrides() {
             </Button>
           </div>
         ) : Object.keys(overrides.data).length ? (
-          <ul className="divide-y rounded-lg border bg-card">
-            {Object.entries(overrides.data)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([key, value]) => (
-                <li key={key} className="flex items-center gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-mono text-sm" title={key}>
-                      {key}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {value.name && (
-                        <Badge variant="secondary" className="max-w-full truncate" title={value.name}>
-                          名称 {value.name}
-                        </Badge>
-                      )}
-                      {value.contextWindow && (
-                        <Badge variant="secondary">上下文 {formatTokens(value.contextWindow)}</Badge>
-                      )}
-                      {value.maxOutput && <Badge variant="secondary">最大输出 {formatTokens(value.maxOutput)}</Badge>}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`编辑 ${key}`}
-                    disabled={remove.isPending}
-                    onClick={() => pick(key)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`删除 ${key} 的覆盖`}
-                    disabled={remove.isPending || set.isPending}
-                    onClick={() => setRemovingId(key)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </li>
-              ))}
-          </ul>
+          <div className="overflow-hidden rounded-lg border bg-card">
+            {/* Every override has the same three fields, so they line up as columns. */}
+            <table className="w-full table-fixed text-sm">
+              <thead className="border-b bg-muted/50 text-xs text-muted-foreground">
+                <tr>
+                  <th className="py-2 pl-4 text-left font-normal">模型 ID</th>
+                  <th className="w-[26%] py-2 pl-4 text-left font-normal">{modelFieldLabels.name}</th>
+                  <th className="w-[18%] py-2 pl-4 text-left font-normal">{modelFieldLabels.contextWindow}</th>
+                  <th className="w-[18%] py-2 pl-4 text-left font-normal">{modelFieldLabels.maxOutput}</th>
+                  <th className="w-12">
+                    <span className="sr-only">操作</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {Object.entries(overrides.data)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([key, value]) => (
+                    <tr key={key}>
+                      <td className="py-2.5 pl-4">
+                        <ModelTitle model={{ id: key }} onOpen={() => pick(key)} />
+                      </td>
+                      <td className="py-2.5 pl-4">
+                        {value.name ? (
+                          <div className="truncate" title={value.name}>
+                            {value.name}
+                          </div>
+                        ) : (
+                          <Unset />
+                        )}
+                      </td>
+                      <td className="py-2.5 pl-4">
+                        {value.contextWindow ? <Tokens value={value.contextWindow} /> : <Unset />}
+                      </td>
+                      <td className="py-2.5 pl-4">
+                        {value.maxOutput ? <Tokens value={value.maxOutput} /> : <Unset />}
+                      </td>
+                      <td className="py-1.5 pr-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+                          aria-label={`删除 ${key} 的覆盖`}
+                          disabled={remove.isPending || set.isPending}
+                          onClick={() => setRemovingId(key)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <Empty className="border py-16">
             <EmptyHeader>
@@ -296,4 +308,13 @@ export function ModelOverrides() {
       </AlertDialog>
     </>
   );
+}
+
+function Tokens({ value }: { value: number }) {
+  return <span className="font-mono tabular-nums">{formatTokens(value)}</span>;
+}
+
+/** A field the override leaves to each provider's own value. */
+function Unset() {
+  return <span className="text-muted-foreground">未覆盖</span>;
 }

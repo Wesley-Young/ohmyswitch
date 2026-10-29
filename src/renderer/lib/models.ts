@@ -12,27 +12,7 @@ export const modelFieldLabels = {
   input: '输入类型',
   toolCall: '工具调用',
 } satisfies Record<Exclude<keyof Model, 'id'>, string>;
-export const modelOverrideFields = [
-  'name',
-  'contextWindow',
-  'maxOutput',
-] as const satisfies readonly (keyof ProviderModelOverride)[];
 export type ModelInput = NonNullable<Model['input']>[number];
-export type ReasoningOption = NonNullable<Model['reasoningOptions']>[number];
-
-export const effortValues = (options: readonly ReasoningOption[] | undefined) =>
-  options?.find((option) => option.type === 'effort')?.values ?? [];
-
-/** A short description of how reasoning is controlled, or undefined when the model does not reason. */
-export function reasoningLabel(model: Model) {
-  if (!model.reasoning) return undefined;
-  const options = model.reasoningOptions;
-  const efforts = effortValues(options);
-  if (efforts.length) return `推理 (${efforts.length > 1 ? `${efforts[0]}–${efforts.at(-1)}` : efforts[0]})`;
-  if (options?.some((option) => option.type === 'budget_tokens')) return '推理 (按预算)';
-  if (options?.length === 0) return '推理 (不可调)';
-  return '推理';
-}
 
 export const inputLabels = {
   text: '文本',

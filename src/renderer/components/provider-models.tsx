@@ -1,11 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Info, MoreHorizontal, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { cn } from 'cn';
+import { Brain, FileText, ImageIcon, MoreHorizontal, RefreshCw, Trash2, WrenchOff } from 'lucide-react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useHarnessFeedback } from '@/components/harness-feedback';
 import { ModelDetailsDialog } from '@/components/model-details-dialog';
 import { ModelEditDialog } from '@/components/model-edit-dialog';
+import { ModelTitle, TokenLimits } from '@/components/model-meta';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,15 +20,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { refreshFetchedModels, refreshProviders } from '@/lib/cache';
 import {
   formatTokens,
   inputLabels,
   type Model,
+  type ModelInput,
   modelFieldLabels,
   optionalInputs,
   type ProviderModelOverride,
-  reasoningLabel,
 } from '@/lib/models';
 import { formError, trpc } from '@/lib/trpc';
 
@@ -102,9 +105,11 @@ export function ProviderModels({
   );
   const setOverride = useMutation(
     trpc.providers.setProviderModelOverride.mutationOptions({
-      onSuccess: async (saved, { override }) => {
-        setEditOpen(false);
+      onSuccess: async (saved, { modelId, override }) => {
         await refreshProviders();
+        // Editing starts from the details dialog, so it returns there, once it shows the saved values.
+        setEditOpen(false);
+        setDetailsId(modelId);
         report(Object.keys(override).length ? '已保存供应商覆盖' : '已恢复继承', saved);
       },
     }),
@@ -201,44 +206,28 @@ export function ProviderModels({
       {models.length ? (
         <ul className="divide-y rounded-lg border bg-card">
           {models.map((model) => (
-            <li key={model.id} className="flex items-center gap-1 py-2.5 pr-2 pl-4">
-              <ModelSummary model={effectiveModels.find((item) => item.id === model.id) ?? model} />
-              {Object.hasOwn(globalModelOverrides, model.id) && (
-                <Badge variant="outline" title={overrideFields(globalModelOverrides[model.id])}>
-                  全局覆盖
-                </Badge>
-              )}
-              {Object.hasOwn(modelOverrides, model.id) && (
-                <Badge variant="secondary" title={overrideFields(modelOverrides[model.id])}>
-                  供应商覆盖
-                </Badge>
-              )}
+            <li key={model.id} className="flex items-center gap-4 py-2.5 pr-2 pl-4">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <ModelTitle
+                  model={effectiveModels.find((item) => item.id === model.id) ?? model}
+                  onOpen={() => setDetailsId(model.id)}
+                />
+                {Object.hasOwn(globalModelOverrides, model.id) && (
+                  <Badge variant="outline" title={overrideFields(globalModelOverrides[model.id])}>
+                    全局覆盖
+                  </Badge>
+                )}
+                {Object.hasOwn(modelOverrides, model.id) && (
+                  <Badge variant="secondary" title={overrideFields(modelOverrides[model.id])}>
+                    供应商覆盖
+                  </Badge>
+                )}
+              </div>
+              <ModelFacts model={effectiveModels.find((item) => item.id === model.id) ?? model} />
               <Button
                 variant="ghost"
-                size="icon-xs"
-                aria-label={`覆盖 ${model.id}`}
-                title="覆盖"
-                disabled={pending}
-                onClick={() => {
-                  setOverride.reset();
-                  setEditing(model);
-                  setEditOpen(true);
-                }}
-              >
-                <SlidersHorizontal />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`${model.id} 的详细信息`}
-                title="详细信息"
-                onClick={() => setDetailsId(model.id)}
-              >
-                <Info />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
+                size="icon-sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
                 aria-label={`移除 ${model.id}`}
                 disabled={pending}
                 onClick={() =>
@@ -249,7 +238,7 @@ export function ProviderModels({
                   )
                 }
               >
-                <X />
+                <Trash2 />
               </Button>
             </li>
           ))}
@@ -273,6 +262,13 @@ export function ProviderModels({
         onOpenChange={(open) => {
           if (!open) setDetailsId(undefined);
         }}
+        editDisabled={pending}
+        onEdit={(model) => {
+          setDetailsId(undefined);
+          setOverride.reset();
+          setEditing(model);
+          setEditOpen(true);
+        }}
       />
       <ModelEditDialog
         model={inheritedModels.find((model) => model.id === editing?.id)}
@@ -280,7 +276,10 @@ export function ProviderModels({
         open={editOpen}
         pending={setOverride.isPending}
         error={setOverride.error ? formError(setOverride.error)?.message : undefined}
-        onOpenChange={setEditOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open && editing) setDetailsId(editing.id);
+        }}
         onSave={(override) => {
           if (editing) setOverride.mutate({ providerId, modelId: editing.id, override });
         }}
@@ -312,23 +311,76 @@ export function ProviderModels({
   );
 }
 
-/** A model's id, name and known metadata, for lists. */
+/**
+ * A model's capabilities and token limits as fixed-width columns, so they line up from row to row. Every slot is
+ * always rendered; a missing tool call slot stays empty, since nearly every model supports it.
+ */
+function ModelFacts({ model }: { model: Model }) {
+  const supports = (input: ModelInput) => (model.input === undefined ? undefined : model.input.includes(input));
+  return (
+    <div className="flex shrink-0 items-center gap-4">
+      <div className="flex items-center gap-2">
+        {model.toolCall === false ? (
+          <Fact label="不支持工具调用" className="text-destructive">
+            <WrenchOff />
+          </Fact>
+        ) : (
+          <span className="size-4" />
+        )}
+        <Capability label={modelFieldLabels.reasoning} value={model.reasoning}>
+          <Brain />
+        </Capability>
+        <Capability label="图片输入" value={supports('image')}>
+          <ImageIcon />
+        </Capability>
+        <Capability label=" PDF 输入" /* manual pan-gu */ value={supports('pdf')}>
+          <FileText />
+        </Capability>
+      </div>
+      <TokenLimits contextWindow={model.contextWindow} maxOutput={model.maxOutput} />
+    </div>
+  );
+}
+
+function Capability({ label, value, children }: { label: string; value: boolean | undefined; children: ReactNode }) {
+  return (
+    <Fact
+      label={value === undefined ? `${label}：未知` : `${value ? '支持' : '不支持'}${label}`}
+      className={value ? 'text-muted-foreground' : 'text-muted-foreground/30'}
+    >
+      {children}
+    </Fact>
+  );
+}
+
+/** A compact fact whose meaning is given by its tooltip and accessible name. */
+function Fact({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <Tooltip>
+      {/* A hint, not an action: it stays light over the list. */}
+      <TooltipTrigger
+        render={<span role="img" aria-label={label} />}
+        className={cn('flex items-center [&_svg]:size-4', className)}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent className="opacity-85">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A model's name, id and known metadata, for pickers. */
 export function ModelSummary({ model }: { model: Model }) {
   const facts = [
     model.contextWindow && `上下文 ${formatTokens(model.contextWindow)}`,
     model.maxOutput && `输出 ${formatTokens(model.maxOutput)}`,
-    reasoningLabel(model),
+    model.reasoning && '推理',
     ...optionalInputs.filter((input) => model.input?.includes(input)).map((input) => inputLabels[input]),
   ].filter((fact): fact is string => Boolean(fact));
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <span className="truncate font-mono text-sm" title={model.id}>
-          {model.id}
-        </span>
-        {model.name && <span className="truncate text-xs text-muted-foreground">{model.name}</span>}
-      </div>
+      <ModelTitle model={model} />
       {(facts.length > 0 || model.toolCall === false) && (
         <div className="mt-1 flex flex-wrap gap-1">
           {facts.map((fact) => (
