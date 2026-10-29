@@ -9,10 +9,11 @@ import GeminiColor from '@lobehub/icons/es/Gemini/components/Color.js';
 import GrokMono from '@lobehub/icons/es/Grok/components/Mono.js';
 import GroqMono from '@lobehub/icons/es/Groq/components/Mono.js';
 import HunyuanColor from '@lobehub/icons/es/Hunyuan/components/Color.js';
+import KimiColor from '@lobehub/icons/es/Kimi/components/Color.js';
+import { AVATAR_BACKGROUND as KIMI_BACKGROUND } from '@lobehub/icons/es/Kimi/style.js';
 import MetaColor from '@lobehub/icons/es/Meta/components/Color.js';
 import MiniMaxColor from '@lobehub/icons/es/Minimax/components/Color.js';
 import MistralColor from '@lobehub/icons/es/Mistral/components/Color.js';
-import MoonshotMono from '@lobehub/icons/es/Moonshot/components/Mono.js';
 import OpenAIMono from '@lobehub/icons/es/OpenAI/components/Mono.js';
 import OpenRouterColor from '@lobehub/icons/es/OpenRouter/components/Color.js';
 import QwenColor from '@lobehub/icons/es/Qwen/components/Color.js';
@@ -37,7 +38,7 @@ const logos = {
   google: GeminiColor,
   deepseek: DeepSeekColor,
   qwen: QwenColor,
-  moonshot: MoonshotMono,
+  moonshot: KimiColor,
   zhipu: ZhipuColor,
   xai: GrokMono,
   mistral: MistralColor,
@@ -55,6 +56,14 @@ const logos = {
   baichuan: BaichuanColor,
 } satisfies Record<Vendor, Icon>;
 
+/**
+ * Tiles in the brand's own color, for a color mark that is drawn in white and needs it to show. The mark is shrunk to
+ * stay inside the filled circle, in the proportion of the brand's avatar.
+ */
+const backgrounds: Partial<Record<Vendor, string>> = {
+  moonshot: KIMI_BACKGROUND,
+};
+
 /** The logo of a model vendor, as a small tile. */
 export function VendorLogo({
   vendor,
@@ -67,14 +76,17 @@ export function VendorLogo({
   className?: string;
 }) {
   const Icon = logos[vendor];
+  const background = backgrounds[vendor];
   return (
     <span
       role="img"
       aria-label={vendorLabels[vendor]}
       title={vendorLabels[vendor]}
       className={cn('flex size-4 items-center justify-center rounded-full bg-background text-foreground', className)}
+      style={background ? { backgroundColor: background } : undefined}
     >
-      <Icon size={size} aria-hidden />
+      {/* Sized by class so it scales with the tile, and so a button's rule for bare icons doesn't enlarge it. */}
+      {background ? <Icon className="size-3/5" aria-hidden /> : <Icon size={size} aria-hidden />}
     </span>
   );
 }
