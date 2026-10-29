@@ -364,7 +364,7 @@ function Fact({ label, className, children }: { label: string; className?: strin
       >
         {children}
       </TooltipTrigger>
-      <TooltipContent className="opacity-85">{label}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }
