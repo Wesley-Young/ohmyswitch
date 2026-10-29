@@ -51,6 +51,7 @@ export function VendorField({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-1">
             <VendorOption
+              vendor={followed}
               label={'跟随端点'}
               selected={!vendor}
               buttonRef={current}
