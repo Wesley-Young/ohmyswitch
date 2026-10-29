@@ -5,7 +5,7 @@ import type { HarnessFailure } from '#core/harnesses/service.ts';
 import type {} from '#core/http/service.ts';
 import type {} from '#core/icons/service.ts';
 import type {} from '#core/models-dev/service.ts';
-import { effectiveModel, type ModelInfo, type StoredProvider } from '#core/provider.ts';
+import { effectiveModel, type ModelInfo, type ModelOverride, type StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
 import { candidateId, groupImports, type ImportCandidate, uniqueName, withImportedModels } from './harness-import.ts';
 import { type CatalogSource, fetchModelCatalog } from './model-catalog.ts';
@@ -32,6 +32,8 @@ declare module 'cordis' {
 
 /** How long a provider's model list is reused before it is fetched again. */
 const listingMaxAgeMs = 10 * 60_000;
+
+const modelOverrideFields = ['name', 'contextWindow', 'maxOutput'] as const satisfies readonly (keyof ModelOverride)[];
 
 /** A provider's model list as last fetched, and the connection it was fetched with. */
 interface Listing {
@@ -68,11 +70,20 @@ export class ProviderService extends Service {
     return this.ctx.store.data.providers.map((provider) => this.summary(provider));
   }
 
-  /** Model ids saved across providers, without connection details or credentials. */
-  modelIds() {
-    return [
-      ...new Set(this.ctx.store.data.providers.flatMap((provider) => provider.models.map((model) => model.id))),
-    ].sort((a, b) => a.localeCompare(b));
+  /**
+   * Model ids saved across providers, each with the base fields a global override replaces. A field is kept only
+   * when every provider saving the model has the same value. No connection details or credentials.
+   */
+  baseModels() {
+    const models = new Map<string, ModelOverride>();
+    for (const provider of this.ctx.store.data.providers)
+      for (const model of provider.models) {
+        const base = models.get(model.id);
+        if (!base)
+          models.set(model.id, { name: model.name, contextWindow: model.contextWindow, maxOutput: model.maxOutput });
+        else for (const field of modelOverrideFields) if (base[field] !== model[field]) delete base[field];
+      }
+    return [...models].map(([id, base]) => ({ id, ...base })).sort((a, b) => a.id.localeCompare(b.id));
   }
 
   /** The detail view of a provider, with its models. */

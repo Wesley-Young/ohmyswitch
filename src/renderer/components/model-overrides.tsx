@@ -37,7 +37,7 @@ export function ModelOverrides() {
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const overrides = useQuery(trpc.providers.modelOverrides.queryOptions());
-  const modelIds = useQuery(trpc.providers.modelIds.queryOptions(undefined, { enabled: open }));
+  const baseModels = useQuery(trpc.providers.baseModels.queryOptions(undefined, { enabled: open }));
   const done = async (result: {
     affected: number;
     failures: { providerName: string; harnessId: string; message: string }[];
@@ -188,11 +188,12 @@ export function ModelOverrides() {
               });
             }}
           >
-            <p className="text-xs text-muted-foreground">留空不覆盖</p>
             <Field data-invalid={duplicateId}>
               <FieldLabel htmlFor="override-id">模型 ID</FieldLabel>
               <Autocomplete.Root
-                items={(modelIds.data ?? []).filter((modelId) => !Object.hasOwn(overrides.data ?? {}, modelId))}
+                items={(baseModels.data ?? [])
+                  .map((model) => model.id)
+                  .filter((modelId) => !Object.hasOwn(overrides.data ?? {}, modelId))}
                 value={id}
                 onValueChange={setId}
                 openOnInputClick
@@ -220,9 +221,9 @@ export function ModelOverrides() {
                     <Autocomplete.Popup className="relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
                       <Autocomplete.Empty>
                         <div className="p-2 text-sm text-muted-foreground">
-                          {modelIds.isPending
+                          {baseModels.isPending
                             ? '正在加载模型…'
-                            : modelIds.isError
+                            : baseModels.isError
                               ? '无法加载模型，可以手动输入'
                               : '没有匹配的模型，可直接输入'}
                         </div>
@@ -255,6 +256,7 @@ export function ModelOverrides() {
               onNameChange={setName}
               onContextChange={setContext}
               onOutputChange={setOutput}
+              inherited={baseModels.data?.find((model) => model.id === id.trim())}
             />
             {error && (
               <p role="alert" className="text-destructive">

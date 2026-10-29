@@ -17,7 +17,7 @@ import { publicProcedure } from '#main/trpc/procedures.ts';
 export function providerRoutes(providers: ProviderService) {
   return {
     list: publicProcedure.query(() => providers.list()),
-    modelIds: publicProcedure.query(() => providers.modelIds()),
+    baseModels: publicProcedure.query(() => providers.baseModels()),
     modelOverrides: publicProcedure.query(() => providers.modelOverrides()),
     setModelOverride: publicProcedure
       .input(modelOverrideInput)

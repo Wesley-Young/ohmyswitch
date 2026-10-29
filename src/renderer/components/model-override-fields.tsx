@@ -2,8 +2,9 @@ import { useId } from 'react';
 
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import type { ProviderModelOverride } from '@/lib/models';
 
-/** Shared inputs for global and provider overrides; empty values mean no override. */
+/** Shared inputs for global and provider overrides; empty values mean no override and show what applies instead. */
 export function ModelOverrideFields({
   name,
   context,
@@ -11,6 +12,7 @@ export function ModelOverrideFields({
   onNameChange,
   onContextChange,
   onOutputChange,
+  inherited = {},
   autoFocus = false,
 }: {
   name: string;
@@ -19,6 +21,7 @@ export function ModelOverrideFields({
   onNameChange: (value: string) => void;
   onContextChange: (value: string) => void;
   onOutputChange: (value: string) => void;
+  inherited?: ProviderModelOverride;
   autoFocus?: boolean;
 }) {
   const id = useId();
@@ -29,6 +32,7 @@ export function ModelOverrideFields({
         <Input
           id={`${id}-name`}
           value={name}
+          placeholder={inherited.name}
           maxLength={256}
           autoFocus={autoFocus}
           onChange={(event) => onNameChange(event.target.value)}
@@ -41,6 +45,7 @@ export function ModelOverrideFields({
             id={`${id}-context`}
             inputMode="numeric"
             value={context}
+            placeholder={inherited.contextWindow?.toString()}
             onChange={(event) => onContextChange(event.target.value)}
             className="font-mono"
           />
@@ -51,6 +56,7 @@ export function ModelOverrideFields({
             id={`${id}-output`}
             inputMode="numeric"
             value={output}
+            placeholder={inherited.maxOutput?.toString()}
             onChange={(event) => onOutputChange(event.target.value)}
             className="font-mono"
           />

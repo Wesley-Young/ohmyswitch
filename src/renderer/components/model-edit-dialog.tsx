@@ -103,7 +103,6 @@ function ModelOverrideForm({
           });
         }}
       >
-        <p className="text-xs text-muted-foreground">留空使用全局覆盖或基础信息</p>
         <fieldset disabled={pending} className="grid min-w-0 gap-3">
           <ModelOverrideFields
             name={name}
@@ -112,6 +111,7 @@ function ModelOverrideForm({
             onNameChange={setName}
             onContextChange={setContext}
             onOutputChange={setOutput}
+            inherited={model}
             autoFocus
           />
         </fieldset>
