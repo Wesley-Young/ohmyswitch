@@ -3,10 +3,20 @@ import * as prompts from '@clack/prompts';
 import type { Choice, ParamSpec, Scope, Suggestions } from './command.ts';
 import { Cancelled, CliError, ParamError, toCliError } from './errors.ts';
 
-import { emitKeypressEvents } from 'node:readline';
+import { emitKeypressEvents, type Interface } from 'node:readline';
 
 // Prompts are drawn without clack's guide line, so they line up with what commands print between them.
 prompts.updateSettings({ withGuide: false });
+
+/**
+ * Turn stdin into keypress events. Node does this once per stream, and the first call fixes how long a lone Esc
+ * waits to be told apart from an escape sequence: 500ms unless given, which makes Esc lag. Call it before clack
+ * does, so the wait is clack's 50ms whichever of a prompt or a spinner comes first.
+ */
+export function decodeKeys() {
+  // Node reads only the timeout from the interface it is given.
+  emitKeypressEvents(process.stdin, { escapeCodeTimeout: 50 } as unknown as Interface);
+}
 
 /** The value a prompt produced, and how it would be written on the command line. */
 export interface Answer {
@@ -34,7 +44,7 @@ const watchInterrupt = (_text: string | undefined, key: { ctrl?: boolean; name?:
  */
 async function prompted<R>(show: () => Promise<R>): Promise<Exclude<R, symbol>> {
   interrupted = false;
-  emitKeypressEvents(process.stdin);
+  decodeKeys();
   process.stdin.on('keypress', watchInterrupt);
   try {
     const result = await show();
@@ -71,6 +81,11 @@ const splitList = (raw: string) =>
 export async function ask(param: ParamSpec, required: boolean, scope: Scope): Promise<Answer> {
   switch (param.kind) {
     case 'text': {
+      const suggested = await suggestionsOf(param, scope);
+      if (suggested) {
+        const answer = await askSuggestedOne(param, required, suggested);
+        if (answer) return answer;
+      }
       const initial = (await param.initial?.(scope)) as string | undefined;
       const skips = (raw: string) => !required && raw === (initial ?? '');
       const raw = await prompted(() =>
@@ -160,6 +175,7 @@ async function askOne(param: ParamSpec, required: boolean, scope: Scope): Promis
   );
   if (index === skip || index === initialIndex) return unchanged;
   const choice = choices[index] as Choice<unknown>;
+  if (!choice.keys.length) return unchanged;
   return { value: choice.value, raws: [choice.keys[0] ?? choice.label] };
 }
 
@@ -214,7 +230,8 @@ async function suggestionsOf(param: ParamSpec, scope: Scope) {
     return suggested.choices.length ? suggested : undefined;
   } catch (error) {
     if (error instanceof Cancelled) throw error;
-    scope.session.out.warn(`${toCliError(error).message.replace(/\.$/, '')}. Type them instead.`);
+    const typed = param.kind === 'list' ? 'them' : 'it';
+    scope.session.out.warn(`${toCliError(error).message.replace(/\.$/, '')}. Type ${typed} instead.`);
     return undefined;
   }
 }
@@ -226,6 +243,27 @@ async function askSuggested(param: ParamSpec, required: boolean, suggested: Sugg
     return { value: undefined, raws: [], flag: suggested.all };
   const raws = chosen.map((choice) => choice.value);
   return { value: raws.map((raw) => parseRaw(param, raw)), raws };
+}
+
+/** Pick one suggested value for a text parameter; undefined when the user chooses to type one instead. */
+async function askSuggestedOne(
+  param: ParamSpec,
+  required: boolean,
+  suggested: Suggestions,
+): Promise<Answer | undefined> {
+  const [skip, other] = [-1, -2];
+  const options = suggested.choices.map(optionOf);
+  if (suggested.open) options.push({ value: other, label: 'Another…', hint: undefined, disabled: false });
+  if (!required) options.push({ value: skip, label: 'Skip', hint: undefined, disabled: false });
+  const index = await prompted(() =>
+    options.length > filterableFrom
+      ? prompts.autocomplete({ message: param.summary, options, placeholder: 'Type to filter' })
+      : prompts.select({ message: param.summary, options }),
+  );
+  if (index === other) return undefined;
+  if (index === skip) return unchanged;
+  const raw = (suggested.choices[index] as Choice<string>).value;
+  return { value: parseRaw(param, raw), raws: [raw] };
 }
 
 /** Ask a yes/no question, no by default. */

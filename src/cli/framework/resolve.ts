@@ -45,7 +45,7 @@ function match(param: ParamSpec, choices: readonly Choice<unknown>[], raw: strin
   if (found.length > 1) throw new ParamError(`"${raw}" matches more than one ${noun}`);
   const [choice] = found;
   if (!choice) {
-    const accepted = choices.filter((item) => !item.disabled).map((item) => item.keys[0] ?? item.label);
+    const accepted = choices.flatMap((item) => (item.disabled || !item.keys[0] ? [] : [item.keys[0]]));
     const known = accepted.length && accepted.length <= 12 ? `; expected one of ${accepted.join(', ')}` : '';
     throw new ParamError(`no ${noun} "${raw}"${known}`, 'not_found');
   }

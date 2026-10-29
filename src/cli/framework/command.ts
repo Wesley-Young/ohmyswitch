@@ -25,7 +25,10 @@ export interface Session {
 /** One option of a select parameter. The command line accepts it by any of its keys, the prompt lists it. */
 export interface Choice<T> {
   value: T;
-  /** Spellings accepted on the command line, such as a name and an id; the first is used in equivalent commands. */
+  /**
+   * Spellings accepted on the command line, such as a name and an id; the first is used in equivalent commands.
+   * None for an option that only the prompt offers, standing for leaving an optional parameter unset.
+   */
   keys: readonly string[];
   label: string;
   hint?: string;
@@ -64,15 +67,17 @@ export type ParamKind = 'text' | 'secret' | 'list' | 'select' | 'flag';
 
 export type ParamValues = Readonly<Record<string, unknown>>;
 
-/** Values a list parameter offers when prompting, to pick instead of type. */
+/** Values a list or text parameter offers when prompting, to pick instead of type. */
 export interface Suggestions {
   /** The values to offer, as their raw strings, which `parse` takes. */
   choices: readonly Choice<string>[];
-  /** Values ticked to begin with. */
+  /** Text: also offer typing a value that is not listed. */
+  open?: boolean;
+  /** Lists: values ticked to begin with. */
   ticked?: readonly string[];
   /**
-   * A flag parameter that means "all of them": when every choice is picked, the answer is that flag instead of the
-   * whole list, so the equivalent command stays short.
+   * Lists: a flag parameter that means "all of them": when every choice is picked, the answer is that flag instead
+   * of the whole list, so the equivalent command stays short.
    */
   all?: string;
 }
@@ -91,6 +96,11 @@ export interface ParamSpec {
   /** Extra help, such as the accepted values. */
   details?: string;
   optional: boolean;
+  /**
+   * Optional parameters that pick what the command works on rather than a change to make, such as a scope: giving
+   * one on the command line still leaves the other optional parameters to be asked.
+   */
+  target?: boolean;
   /** For optional parameters: whether a value is needed after all, given the parameters before it. */
   requiredWhen?: (values: ParamValues) => boolean;
   /**
@@ -110,7 +120,7 @@ export interface ParamSpec {
   /** Text: a placeholder in the prompt. */
   hint?: string;
   /**
-   * Lists: values to pick from when prompting. If getting them fails, the failure is shown and the values are
+   * Lists and text: values to pick from when prompting. If getting them fails, or there are none, the values are
    * typed instead. The command line still takes any value `parse` accepts.
    */
   suggest?: (scope: Scope) => Promise<Suggestions>;
@@ -137,6 +147,7 @@ interface CommonOptions {
   short?: string;
   placeholder?: string;
   details?: string;
+  target?: boolean;
   ask?: ParamSpec['ask'];
   complete?: ParamSpec['complete'];
 }
@@ -156,6 +167,7 @@ interface TextOptions<T> extends CommonOptions {
   parse?: (raw: string) => T;
   initial?: (scope: Scope) => string | undefined | Promise<string | undefined>;
   hint?: string;
+  suggest?: ParamSpec['suggest'];
 }
 
 /** A single string, as an option or positional argument. */
@@ -171,9 +183,7 @@ export function text(options: TextOptions<unknown> & Requirement): ParamSpec {
  * Repeatable strings: `--model a --model b`. When prompting, picked from `suggest` when it offers any, otherwise a
  * comma-separated answer. Unset is empty.
  */
-export function textList<T = string>(
-  options: TextOptions<T> & { optional: true; suggest?: ParamSpec['suggest'] },
-): Param<T[]> {
+export function textList<T = string>(options: TextOptions<T> & { optional: true }): Param<T[]> {
   return { parse: (raw: string) => raw, ...base('list', options), multiple: true };
 }
 
@@ -182,10 +192,10 @@ export function textList<T = string>(
  * `--<flag>-env <var>`, or typed into a masked prompt.
  */
 export function secret(
-  options: Omit<TextOptions<string>, 'initial' | 'complete'> & { optional?: false },
+  options: Omit<TextOptions<string>, 'initial' | 'complete' | 'suggest'> & { optional?: false },
 ): Param<string>;
 export function secret(
-  options: Omit<TextOptions<string>, 'initial' | 'complete'> & { optional: true },
+  options: Omit<TextOptions<string>, 'initial' | 'complete' | 'suggest'> & { optional: true },
 ): Param<string | undefined>;
 export function secret(options: TextOptions<unknown> & Requirement): ParamSpec {
   return { parse: (raw: string) => raw, ...base('secret', options) };

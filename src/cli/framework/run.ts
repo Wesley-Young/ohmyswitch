@@ -141,9 +141,9 @@ async function execute(command: Command, path: readonly string[], invocation: In
   let prompted = false;
   const scope = createScope(session, values);
   // Optional parameters are asked only when the command line gave none of them: `oms provider edit X` asks what
-  // to change, `oms provider edit X --name Y` just renames.
+  // to change, `oms provider edit X --name Y` just renames. Targets say what to change, not what the change is.
   const explicitOptional = params.some(
-    ([key, param]) => param.optional && param.kind !== 'flag' && isGiven(raw.get(key)),
+    ([key, param]) => param.optional && !param.target && param.kind !== 'flag' && isGiven(raw.get(key)),
   );
 
   for (const [key, param] of params) {

@@ -1,6 +1,7 @@
 import * as prompts from '@clack/prompts';
 
 import { exitCodes } from './errors.ts';
+import { decodeKeys } from './prompt.ts';
 
 /** Reports which step of a slow task has started; each call replaces the message shown. */
 export type Stage = (message: string) => void;
@@ -18,6 +19,7 @@ export async function withProgress<T>(enabled: boolean, task: (stage: Stage) => 
       spinner.message(message);
       return;
     }
+    decodeKeys();
     spinner = prompts.spinner({
       output: process.stderr,
       // While it spins, the spinner owns SIGINT, which would otherwise no longer end the process. Ctrl-C quits.
