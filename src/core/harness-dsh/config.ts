@@ -72,16 +72,15 @@ const catalogProviders = [
 /** Routes registered by DSH's own DeepSeek adapters. */
 const deepseekRoutes = ['deepseek-official', 'deepseek-account'];
 
-type DshApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
+type DshApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-generative-ai';
 
-/** DSH's API for each endpoint it can serve, and the path its client expects at the end of `baseURL`. */
-const apis: Partial<Record<Endpoint, { api: DshApi; path: string }>> = {
+/** DSH's API for each endpoint, and the path its client expects at the end of `baseURL` (DSH 0.2.2-rc.2). */
+const apis = {
   '/v1/chat/completions': { api: 'openai-completions', path: '/v1' },
   '/v1/responses': { api: 'openai-responses', path: '/v1' },
   '/v1/messages': { api: 'anthropic-messages', path: '' },
-};
-
-export const dshUnsupportedEndpoints: readonly Endpoint[] = ['/v1beta/generateContent'];
+  '/v1beta/generateContent': { api: 'google-generative-ai', path: '/v1beta' },
+} as const satisfies Record<Endpoint, { api: DshApi; path: string }>;
 
 // --- YAML -------------------------------------------------------------------------------------------------------
 
@@ -277,7 +276,6 @@ function dshModel(model: ModelInfo, api: DshApi, existing: unknown): JsonObject 
 
 function dshProviderEntry(provider: StoredProvider, existing: unknown, key: string): JsonObject {
   const protocol = apis[provider.endpoint];
-  if (!protocol) throw new AppError('precondition_failed', 'DeepSeek Harness 不支持 Google Generative AI 端点');
   // DSH rejects a hand-declared route without models, and with it every other change in the same patch.
   if (!provider.models.length) throw new AppError('precondition_failed', 'DeepSeek Harness 要求供应商至少有一个模型');
   const previous = isJsonObject(existing) ? existing : {};

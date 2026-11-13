@@ -2,6 +2,8 @@
 
 依据 DSH 0.2.0-rc.2 的源码（tag `dsh-v0.2.0-rc.2`，commit 639ed01）整理，内置的 pi-ai 为 0.87.1。涉及的文件：`packages/boot/app-boot`（profile 与 patch 的叠加）、`vendor/include`（patch 算法）、`packages/boot/config-editor`（Web UI 如何写 patch）、`packages/llm/llm-pi-ai`（供应商配置）、`packages/credentials/credentials-local`（凭据文件）、`packages/util/atomic-write`（文件锁）、`packages/util/home-paths`。DSH 升级后需要重新核对标了「版本相关」的条目。
 
+Gemini 自定义供应商支持另于 DSH **0.2.2-rc.2** 的已安装源码核对（`@deepseek-ai/dsh-llm-pi-ai` 0.2.2-rc.2、`@earendil-works/pi-ai` 1.3.0）：`llm-pi-ai/src/provider.ts` 的 `PROTOCOLS` 已包含 `google-generative-ai`；pi-ai 的 `dist/api/google-generative-ai.js` 在设置 `baseUrl` 时将 `apiVersion` 置空，因此写入的 `baseURL` 必须自带 `/v1beta`。本次只更新端点支持契约，其余版本相关条目仍以上述 0.2.0-rc.2 的核对为基线。旧版 DSH 若未开放此协议，需要先升级才能应用 Gemini 供应商。
+
 ## 读写的文件
 
 | 文件 | 读 | 写 | 说明 |
@@ -65,7 +67,7 @@ provider 级的其他字段（`compat`、`headers`、`retryPolicy`、`timeoutMs`
 | `/v1/chat/completions` | `openai-completions` | `<Base URL>/v1` | OpenAI SDK 在 baseURL 后拼 `/chat/completions`；内置 openai 为 `https://api.openai.com/v1` |
 | `/v1/responses` | `openai-responses` | `<Base URL>/v1` | 同上 |
 | `/v1/messages` | `anthropic-messages` | `<Base URL>` | Anthropic SDK 自己拼 `/v1/messages`；内置 anthropic 为 `https://api.anthropic.com` |
-| `/v1beta/generateContent` | — | — | DSH 只开放上面三种协议（`llm-pi-ai/src/provider.ts` 的 `PROTOCOLS`），不能应用 |
+| `/v1beta/generateContent` | `google-generative-ai` | `<Base URL>/v1beta` | DSH 0.2.2-rc.2 已开放此协议；Google SDK 使用完整的带版本 baseURL，不再追加版本路径 |
 
 ### 模型字段
 

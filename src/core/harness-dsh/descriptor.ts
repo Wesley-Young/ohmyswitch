@@ -3,7 +3,7 @@ import { isDirectory, readTextIfExists } from '#core/files.ts';
 import type { HarnessConfigFile, HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
 import { isJsonObject } from '#core/jsonc.ts';
 import { resolveDirOverride } from '#core/paths.ts';
-import { dshCredentialsAdapter, dshPatchAdapter, dshUnsupportedEndpoints, patchSetsProviders } from './config.ts';
+import { dshCredentialsAdapter, dshPatchAdapter, patchSetsProviders } from './config.ts';
 
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -88,5 +88,4 @@ export const dsh: HarnessDescriptor = {
     const names = patches.map((file) => file.path.split(/[\\/]/).at(-2));
     return join(homeDir(environment), 'profiles', `{${names.join(',')}}`, 'cordis.patch.yml');
   },
-  unsupportedEndpoints: dshUnsupportedEndpoints,
 };
