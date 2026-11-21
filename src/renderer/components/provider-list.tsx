@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
+import { useRef } from 'react';
 import { NavLink } from 'react-router';
 import { toast } from 'sonner';
 
@@ -75,6 +76,7 @@ function SortableProviders({
   providers: Provider[];
   applications: Record<string, Application[]>;
 }) {
+  const listRef = useRef<HTMLUListElement>(null);
   const reportFailures = useHarnessFailures();
   const listKey = trpc.providers.list.queryKey();
   const reorder = useMutation(
@@ -117,12 +119,16 @@ function SortableProviders({
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
       accessibility={{ announcements: announcements(providers), screenReaderInstructions }}
+      onDragStart={({ activatorEvent }) => {
+        // Capture on the list so the click after a pointer drag cannot activate a provider link.
+        if (activatorEvent instanceof PointerEvent) listRef.current?.setPointerCapture(activatorEvent.pointerId);
+      }}
       onDragEnd={onDragEnd}
     >
       <SortableContext items={providers.map((provider) => provider.id)} strategy={verticalListSortingStrategy}>
         {/* A grid column sizes to its widest item by default; minmax(0, 1fr) keeps items at the column width so
             long names truncate instead of scrolling the column sideways. */}
-        <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
+        <ul ref={listRef} className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
           {providers.map((provider) => (
             <ProviderItem key={provider.id} provider={provider} applications={applications[provider.id] ?? []} />
           ))}

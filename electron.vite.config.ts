@@ -17,6 +17,8 @@ export default defineConfig({
   renderer: {
     root: 'src/renderer',
     publicDir: fileURLToPath(new URL('assets/brand', import.meta.url)),
+    // The app:// host serves assets from its root, including when a nested route is reloaded.
+    experimental: { renderBuiltUrl: (filename) => `/${filename}` },
     resolve: { alias: { '@': fileURLToPath(new URL('src/renderer', import.meta.url)) } },
     plugins: [react(), tailwindcss()],
     build: {
