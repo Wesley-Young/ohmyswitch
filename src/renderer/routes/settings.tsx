@@ -25,14 +25,14 @@ export default function Settings() {
           </Button>
           <h1 className="text-sm font-semibold">设置</h1>
         </div>
-        <nav aria-label="设置" className="min-h-0 flex-1 overflow-y-auto p-2">
+        <nav aria-label="设置" className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2">
           {items.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent',
                   isActive && 'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
                 )
               }
