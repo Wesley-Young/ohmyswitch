@@ -315,17 +315,24 @@ export function ProviderModels({
  * A model's capabilities and token limits as fixed-width columns, so they line up from row to row. Every slot is
  * always rendered; a missing tool call slot stays empty, since nearly every model supports it.
  */
-function ModelFacts({ model }: { model: Model }) {
+function ModelFacts({ model, compact = false }: { model: Model; compact?: boolean }) {
   const supports = (input: ModelInput) => (model.input === undefined ? undefined : model.input.includes(input));
   return (
-    <div className="flex shrink-0 items-center gap-4">
-      <div className="flex items-center gap-2">
+    <span
+      className={cn(
+        'flex shrink-0',
+        compact
+          ? 'flex-col items-end gap-1 @max-[350px]:flex-row @max-[350px]:items-center @max-[350px]:gap-3'
+          : 'items-center gap-4',
+      )}
+    >
+      <span className="flex items-center gap-2">
         {model.toolCall === false ? (
           <Fact label="不支持工具调用" className="text-destructive">
             <WrenchOff />
           </Fact>
         ) : (
-          <span className="size-4" />
+          !compact && <span className="size-4" />
         )}
         <Capability label={modelFieldLabels.reasoning} value={model.reasoning}>
           <Brain />
@@ -336,9 +343,9 @@ function ModelFacts({ model }: { model: Model }) {
         <Capability label=" PDF 输入" /* manual pan-gu */ value={supports('pdf')}>
           <FileText />
         </Capability>
-      </div>
-      <TokenLimits contextWindow={model.contextWindow} maxOutput={model.maxOutput} />
-    </div>
+      </span>
+      <TokenLimits contextWindow={model.contextWindow} maxOutput={model.maxOutput} compact={compact} />
+    </span>
   );
 }
 
@@ -514,7 +521,7 @@ function ModelPicker({
             已选 {selectedCount} / {remote.length}
           </span>
         </div>
-        <ul className="h-80 divide-y overflow-y-auto rounded-lg border">
+        <ul className="@container max-h-80 divide-y overflow-y-auto rounded-lg border">
           {visible.map((model, index) => (
             <li key={model.id} className="flex items-center gap-3 pl-3 hover:bg-muted/50">
               <Checkbox
@@ -524,9 +531,10 @@ function ModelPicker({
               />
               <label
                 htmlFor={`model-picker-${index}`}
-                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2 pr-3"
+                className="grid min-w-0 flex-1 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2.5 pr-3 @max-[350px]:grid-cols-1"
               >
-                <ModelSummary model={model} />
+                <ModelTitle model={model} stacked />
+                <ModelFacts model={model} compact />
               </label>
             </li>
           ))}
