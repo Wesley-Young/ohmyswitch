@@ -19,6 +19,7 @@ import ProviderNew from '@/routes/provider-new';
 import Providers from '@/routes/providers';
 import ProvidersIndex from '@/routes/providers-index';
 import Settings from '@/routes/settings';
+import Usage from '@/routes/usage';
 
 syncColorScheme();
 
@@ -40,6 +41,7 @@ createRoot(root).render(
               <Route path=":providerId" element={<ProviderDetail />} />
               <Route path=":providerId/edit" element={<ProviderEdit />} />
             </Route>
+            <Route path="usage" element={<Usage />} />
             <Route path="settings" element={<Settings />}>
               <Route index element={<Navigate to="models" replace />} />
               <Route path="models" element={<ModelOverrides />} />

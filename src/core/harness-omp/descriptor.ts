@@ -2,6 +2,7 @@ import { AppError } from '#core/errors.ts';
 import { firstExisting, isDirectory, isFile } from '#core/files.ts';
 import type { HarnessConfigFile, HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
 import { ompAdapter } from './config.ts';
+import { readOmpProfile } from './usage.ts';
 
 import { readdir } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative } from 'node:path';
@@ -53,6 +54,41 @@ export const omp: HarnessDescriptor = {
   name: 'omp',
   homepage: 'https://omp.sh',
   homeDir: configRoot,
+  async readUsage(environment, scan) {
+    const root = configRoot(environment);
+    const main = defaultAgentDir(environment);
+    const xdg = environment.env.XDG_DATA_HOME;
+    const xdgRoot = xdg && isAbsolute(xdg) && process.platform !== 'win32' ? join(xdg, 'omp') : undefined;
+    const profiles = new Set<string>();
+    for (const base of [root, xdgRoot]) {
+      if (!base) continue;
+      try {
+        for (const entry of await readdir(join(base, 'profiles'), { withFileTypes: true })) {
+          if (entry.isDirectory() && profileName.test(entry.name) && !entry.name.endsWith('.'))
+            profiles.add(entry.name);
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    }
+    for (const name of [null, ...profiles]) {
+      const profile = name ? join(root, 'profiles', name) : root;
+      const agent = name ? join(profile, 'agent') : main;
+      const shared = !name && isAbsolute(environment.env.PI_CODING_AGENT_DIR ?? '');
+      const xdgProfile = xdgRoot && (name ? join(xdgRoot, 'profiles', name) : xdgRoot);
+      const useXdg = agent === join(profile, 'agent') && xdgProfile && (await isDirectory(xdgProfile));
+      try {
+        await readOmpProfile(
+          join(useXdg ? xdgProfile : agent, 'sessions'),
+          useXdg ? xdgProfile : profile,
+          shared && !useXdg,
+          scan,
+        );
+      } catch {
+        scan.incomplete = true;
+      }
+    }
+  },
   async configFiles(environment) {
     const agentDirs = await profileAgentDirs(configRoot(environment));
     const main = defaultAgentDir(environment);

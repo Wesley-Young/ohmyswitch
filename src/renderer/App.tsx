@@ -1,5 +1,5 @@
-import { Plus, Settings } from 'lucide-react';
-import { Link, Outlet } from 'react-router';
+import { BarChart3, Plus, Settings } from 'lucide-react';
+import { Link, NavLink, Outlet } from 'react-router';
 
 import { DeepLinkListener } from '@/components/deep-link-listener';
 import { PluginListener } from '@/components/plugin-listener';
@@ -16,6 +16,16 @@ export default function App() {
         <TopBar
           actions={
             <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="aria-[current=page]:bg-accent"
+                nativeButton={false}
+                render={<NavLink to="/usage" />}
+              >
+                <BarChart3 data-icon="inline-start" />
+                模型用量
+              </Button>
               <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/settings" />}>
                 <Settings data-icon="inline-start" />
                 设置

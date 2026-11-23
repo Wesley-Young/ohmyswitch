@@ -37,8 +37,8 @@ export function padEnd(text: string, width: number) {
   return text + ' '.repeat(Math.max(0, width - displayWidth(text)));
 }
 
-/** Lay out rows in columns two spaces apart. The last column is not padded. */
-export function columns(rows: readonly (readonly string[])[]) {
+/** Lay out rows in columns two spaces apart. Numeric columns can be aligned to the right. */
+export function columns(rows: readonly (readonly string[])[], numeric: readonly number[] = []) {
   const widths: number[] = [];
   for (const row of rows) {
     row.forEach((cell, index) => {
@@ -47,7 +47,11 @@ export function columns(rows: readonly (readonly string[])[]) {
   }
   return rows.map((row) =>
     row
-      .map((cell, index) => (index === row.length - 1 ? cell : padEnd(cell, widths[index] ?? 0)))
+      .map((cell, index) => {
+        const width = widths[index] ?? 0;
+        if (numeric.includes(index)) return ' '.repeat(width - displayWidth(cell)) + cell;
+        return index === row.length - 1 ? cell : padEnd(cell, width);
+      })
       .join('  ')
       .trimEnd(),
   );

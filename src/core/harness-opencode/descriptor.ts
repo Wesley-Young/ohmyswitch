@@ -1,6 +1,7 @@
 import { firstExisting } from '#core/files.ts';
 import type { HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
 import { openCodeAdapter } from './config.ts';
+import { readOpenCodeUsage } from './usage.ts';
 
 import { isAbsolute, join } from 'node:path';
 
@@ -14,6 +15,7 @@ export const opencode: HarnessDescriptor = {
   name: 'OpenCode',
   homepage: 'https://opencode.ai',
   homeDir,
+  readUsage: readOpenCodeUsage,
   async configFiles(environment) {
     const dir = homeDir(environment);
     // An existing opencode.jsonc wins, then opencode.json; a new file is created as opencode.jsonc.

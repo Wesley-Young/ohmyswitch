@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import { AppError } from '#core/errors.ts';
 import { isDirectory } from '#core/files.ts';
+import { type CachedUsage, UsageScan } from '#core/harnesses/usage/files.ts';
+import { usageReport } from '#core/harnesses/usage/report.ts';
 import type {} from '#core/models-dev/service.ts';
 import { effectiveModel, type StoredProvider } from '#core/provider.ts';
 import type {} from '#core/store/service.ts';
@@ -39,7 +41,9 @@ export interface HarnessFailure {
 }
 
 interface Registration {
+  readingUsage?: Promise<UsageScan>;
   harness: HarnessDescriptor;
+  usageCache: Map<string, CachedUsage>;
   /** Edits of this harness's files in flight, which unregistering waits for. */
   running: Set<Promise<unknown>>;
 }
@@ -67,7 +71,7 @@ export class HarnessService extends Service {
   register(harness: HarnessDescriptor) {
     if (!harnessId.safeParse(harness.id).success) throw new Error(`Invalid harness id "${harness.id}"`);
     if (this.registrations.has(harness.id)) throw new AppError('conflict', `已有另一个插件提供 ${harness.name}`);
-    const registration: Registration = { harness, running: new Set() };
+    const registration: Registration = { harness, running: new Set(), usageCache: new Map() };
     return this.ctx.effect(
       () => {
         this.registrations.set(harness.id, registration);
@@ -78,6 +82,33 @@ export class HarnessService extends Service {
       },
       `ctx.harnesses.register(${JSON.stringify(harness.id)})`,
     );
+  }
+
+  async usage(days: number | null) {
+    const until = new Date();
+    const sources = await Promise.all(
+      [...this.registrations.values()].map((registration) =>
+        this.track(registration.harness.id, async (harness) => {
+          registration.readingUsage ??= this.scanUsage(registration).finally(() => {
+            registration.readingUsage = undefined;
+          });
+          const scan = await registration.readingUsage;
+          return { name: harness.name, records: scan.records, incomplete: scan.incomplete };
+        }),
+      ),
+    );
+    return usageReport(sources, days, until);
+  }
+
+  private async scanUsage(registration: Registration) {
+    const scan = new UsageScan(registration.usageCache);
+    try {
+      await registration.harness.readUsage?.(this.environment, scan);
+    } catch {
+      scan.incomplete = true;
+    }
+    registration.usageCache = scan.cache;
+    return scan;
   }
 
   /** Each harness, whether it is present on this machine, where its config is, and which endpoints it cannot serve. */

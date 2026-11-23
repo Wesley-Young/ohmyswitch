@@ -14,3 +14,6 @@ export const applyInput = applicationInput.extend({
   /** Take over an existing entry with the same key that ohmyswitch does not own. */
   replace: z.boolean().default(false),
 });
+
+export const usageDays = z.int().min(1).max(365000);
+export const usageInput = z.object({ days: usageDays.nullable().default(30) });

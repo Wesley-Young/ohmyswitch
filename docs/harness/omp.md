@@ -121,3 +121,9 @@ omp 解析 `apiKey` 的规则（`resolveConfigValue`）：以 `!` 开头时当�
 - 内置供应商 id 列表随 omp 版本变化。
 - 新建 profile 后需要重新写入；ohmyswitch 不监听 omp 目录。
 - 推理档位完全交给 omp 推导；omp 不认识的模型（中转站改过名的 id）可能不提供档位，需要用户手写 `thinking`。
+
+## 模型用量
+
+按 omp 18.12.1 的 `packages/stats/src/parser.ts`、`db.ts` 和 `packages/utils/src/dirs.ts` 核对。查看用量时枚举默认及命名 profile，读取会话目录中的助手消息和 `model_usage` 条目，按条目 ID 和时间去重。会话目录通常是 `<agentDir>/sessions`；已迁移的 profile 使用对应的 XDG 数据目录。没有会话文件时，只读该 profile 的 `stats.db` 中的 `messages` 表。
+
+总量优先取 `totalTokens`；缺少总量时，按输入、输出、缓存读写及供应商报告的 `orchestration` 用量合计。

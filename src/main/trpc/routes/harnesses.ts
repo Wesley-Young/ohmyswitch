@@ -1,9 +1,10 @@
-import { applicationInput, applyInput, providerInput, unapplyManyInput } from '#core/harnesses/schemas.ts';
+import { applicationInput, applyInput, providerInput, unapplyManyInput, usageInput } from '#core/harnesses/schemas.ts';
 import type { HarnessService } from '#core/harnesses/service.ts';
 import { publicProcedure } from '#main/trpc/procedures.ts';
 
 export function harnessRoutes(harnesses: HarnessService) {
   return {
+    usage: publicProcedure.input(usageInput).query(({ input }) => harnesses.usage(input.days)),
     list: publicProcedure.query(() => harnesses.list()),
     applications: publicProcedure.query(() => harnesses.applications()),
     apply: publicProcedure

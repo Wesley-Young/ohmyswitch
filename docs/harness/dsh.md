@@ -149,3 +149,9 @@ DSH 写文件时持有跨进程锁：以 `wx` 方式创建 `<file>.lock`，内�
 - 新建 profile 后需要重新写入；ohmyswitch 不监听 DSH 目录。
 - 通过 `--patch` 传入的临时 patch 无法检测。
 - 修改 patch 时整个文件会按 YAML 库的格式重新输出：注释、`!!js` 表达式和数据保持不变，但其他条目里的行内集合会规范为 `[ a, b ]` 的写法（DSH 的 config-editor 也是如此）。
+
+## 模型用量
+
+按 0.2.0-rc.2 的 `session-persistence-jsonl` 和 `token-meter` 核对。查看用量时只读 `<home>/sessions` 下每个会话版本最高的日志，支持原始 JSONL 和 Zstandard 压缩文件，跳过继承的会话前缀。
+
+助手消息优先取结算用量，其次取流中最后一次上报的用量。同一轮、同步骤的后续样本替换前一次，重试开始后另计。上下文压缩按摘要事件自己的模型计入。没有上报 token 的尝试不估算。

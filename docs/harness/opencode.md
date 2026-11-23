@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `<configDir>/opencode.jsonc` 或 `<configDir>/opencode.json` | 是 | 是 | 全局配置；两个都存在时写 `opencode.jsonc` |
 | 项目目录中的 `opencode.json(c)`、`.opencode/` | 否 | 否 | 项目级配置不碰 |
-| OpenCode 数据目录（`~/.local/share/opencode`，含凭据数据库） | 否 | 否 | 登录凭据不读不写 |
+| `<dataDir>/opencode.db` | 是 | 否 | 查看用量时只读会话和用量字段 |
 
 - `<configDir>` 是 `$XDG_CONFIG_HOME/opencode`，未设置时为 `~/.config/opencode`（所有平台相同）。见 `src/core/harness-opencode/descriptor.ts`。
 - OpenCode 两个全局文件都会读取，`opencode.jsonc` 优先级更高。OpenCode 自己更新全局配置时，写入两者中最后一个存在的（即 `opencode.jsonc` 优先），都不存在时新建 `opencode.jsonc`。ohmyswitch 用同样的规则选文件。
@@ -128,3 +128,9 @@ OpenCode 用 variants 表示推理档位，每个 variant 是 `{ id, settings?, 
 - 名称、`settings.baseURL`、模型 id 或名称中含 `{env:`、`{file:` 时不能导入：写回时会被拒绝（见「文件格式」）。
 - `variants` 不反推，模型的其他信息由 models.dev 补全（只补缺失的字段）。
 - 不能导入的条目也列出，附上原因；导入后的处理与 Pi 相同（见 `docs/harness/pi.md` 的「导入」）。
+
+## 模型用量
+
+按 OpenCode v2.0.27 的 `session/stats.ts`、`session/compaction.ts` 和 `schema/src/token-usage.ts` 核对。数据库默认在 `$XDG_DATA_HOME/opencode`（未设置时为 `~/.local/share/opencode`），支持 `OPENCODE_DB`。查询使用 SQLite 的只读连接，可以看到已提交的 WAL 数据。
+
+V2 取已结束的助手消息和上下文压缩记录，排除 fork 继承的旧消息。独立标题用量和只有事件的压缩用量列为未归属。数据库只有 V1 表时，从 `message` 的助手消息取数。输出包含 `tokens.output` 和 `tokens.reasoning`。

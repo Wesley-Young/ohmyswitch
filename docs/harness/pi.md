@@ -8,7 +8,8 @@
 |---|---|---|---|
 | `<agentDir>/models.json` | 是 | 是 | 唯一写入的文件 |
 | `<agentDir>/auth.json` | 否 | 否 | 登录凭据，不读不写 |
-| `<agentDir>/settings.json` | 否 | 否 | 默认供应商、默认模型、启用的模型都在这里，ohmyswitch 不写默认值 |
+| `<agentDir>/settings.json` | 是 | 否 | 查看用量时读取 `sessionDir` |
+| 会话目录中的 `*.jsonl` | 是 | 否 | 读取模型 ID、时间和 token 计数 |
 
 `<agentDir>` 是 `PI_CODING_AGENT_DIR`（支持绝对路径和 `~/`），未设置时为 `~/.pi/agent`。见 `src/core/harness-pi/descriptor.ts`。
 
@@ -136,3 +137,9 @@ E 中 Pi 没有的值（如 `default`）忽略。
 
 - `openai-completions` 的推理参数格式（`compat.thinkingFormat`）由 Pi 按 provider id 和域名自动判断。经中转站访问 DeepSeek、GLM、Qwen 等时判断不出来，会按 OpenAI 格式发送 `reasoning_effort`。models.dev 没有对应数据，暂不处理。
 - 内置供应商 id 列表随 Pi 版本变化。
+
+## 模型用量
+
+按 Pi 1.3.0 的 `core/session-manager.ts`、`main.ts` 和 `pi-ai/src/types.ts` 核对。会话目录依次取 `PI_CODING_AGENT_SESSION_DIR`、全局设置的 `sessionDir`、`<agentDir>/sessions`。单次启动另外指定的目录无法自动发现。
+
+统计助手消息、带用量的工具结果、压缩和分支摘要。实际返回模型 `responseModel` 优先，缺失时用 `model`。没有模型 ID 的用量计入「未归属」。跨文件按条目 ID 和时间去重，避免 fork、clone 复制的历史被重复计算。输出已含推理。

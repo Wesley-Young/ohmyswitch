@@ -22,8 +22,8 @@ export class Output {
   }
 
   /** A table with a dimmed header row. */
-  table(header: readonly string[], rows: readonly (readonly string[])[]) {
-    const [head, ...body] = columns([header, ...rows]);
+  table(header: readonly string[], rows: readonly (readonly string[])[], numeric: readonly number[] = []) {
+    const [head, ...body] = columns([header, ...rows], numeric);
     this.print(this.paint('dim', head ?? ''));
     for (const line of body) this.print(line);
   }

@@ -1,6 +1,7 @@
 import type { HarnessDescriptor, HarnessEnvironment } from '#core/harnesses/types.ts';
 import { resolveDirOverride } from '#core/paths.ts';
 import { piAdapter } from './config.ts';
+import { readPiUsage } from './usage.ts';
 
 import { join } from 'node:path';
 
@@ -12,5 +13,6 @@ export const pi: HarnessDescriptor = {
   name: 'Pi',
   homepage: 'https://pi.dev',
   homeDir,
+  readUsage: (env, scan) => readPiUsage(homeDir(env), env, scan),
   configFiles: async (environment) => [{ path: join(homeDir(environment), 'models.json'), adapter: piAdapter }],
 };

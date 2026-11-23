@@ -4,6 +4,7 @@ import type { HarnessConfigFile, HarnessDescriptor, HarnessEnvironment } from '#
 import { isJsonObject } from '#core/jsonc.ts';
 import { resolveDirOverride } from '#core/paths.ts';
 import { dshCredentialsAdapter, dshPatchAdapter, patchSetsProviders } from './config.ts';
+import { readDshUsage } from './usage.ts';
 
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -51,6 +52,7 @@ export const dsh: HarnessDescriptor = {
   name: 'DeepSeek Harness',
   homepage: 'https://github.com/deepseek-ai/deepseek-harness',
   homeDir,
+  readUsage: (env, scan) => readDshUsage(homeDir(env), scan),
   async configFiles(environment) {
     const home = homeDir(environment);
     let homePatch: string | undefined;

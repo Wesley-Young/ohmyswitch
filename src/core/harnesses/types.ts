@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { Endpoint } from '#core/endpoints.ts';
+import type { UsageScan } from '#core/harnesses/usage/files.ts';
 import type { HarnessAdapter } from './adapter.ts';
 
 /**
@@ -32,6 +33,8 @@ export interface HarnessDescriptor {
   readonly homepage: string;
   /** The harness's own directory; its existence means the harness has been used on this machine. */
   homeDir(environment: HarnessEnvironment): string;
+  /** Collect usage from this harness without modifying its storage. */
+  readUsage?(environment: HarnessEnvironment, scan: UsageScan): Promise<void>;
   /**
    * Every file a provider is written into, in write order; removal runs in reverse. Throws an AppError when the
    * harness cannot be written to as it is.
