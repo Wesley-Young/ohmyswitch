@@ -61,6 +61,7 @@ export function ModelOverrides() {
   const remove = useMutation(
     trpc.providers.removeModelOverride.mutationOptions({
       onSuccess: async (result) => {
+        setRemovingId(undefined);
         await done(result);
       },
       onError: (e) => toast.error(formError(e)?.message),
